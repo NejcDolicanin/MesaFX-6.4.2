@@ -53,3 +53,6 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# Visual Studio 2015/2017 cache/options directory
+.vs/
