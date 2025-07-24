@@ -62,7 +62,6 @@ TOOLS_PREFIX = mingw32-
 
 TOP = ../..
 #Nejc
-#GLIDE ?= $(TOP)/glide3
 GLIDE ?= $(TOP)/3dfx/glide3
 LIBDIR = $(TOP)/lib
 ifeq ($(ICD),1)
@@ -140,7 +139,9 @@ OBJECTS = $(addsuffix .o,$(basename $(SOURCES)))
 
 X86_OBJECTS = $(addsuffix .o,$(basename $(X86_SOURCES)))
 
+#Nejc
 RESOURCE = $(GL_RES:.rc=.res)
+#RESOURCE = $(GL_RES:.rc=.o)
 
 .c.o:
 	$(CC) -o $@ $(CFLAGS) -c $<
@@ -156,10 +157,21 @@ all: $(LIBDIR) $(LIBDIR)/$(GL_DLL) $(LIBDIR)/$(GL_IMP)
 $(LIBDIR):
 	mkdir -p $(LIBDIR)
 
+# Nejc
+#$(LIBDIR)/$(GL_DLL) $(LIBDIR)/$(GL_IMP): $(OBJECTS) $(RESOURCE)
+#	$(TOOLS_PREFIX)dllwrap -o $(LIBDIR)/$(GL_DLL) --output-lib $(LIBDIR)/$(GL_IMP) \
+#	                       --target i386-mingw32 --def $(GL_DEF) -Wl,-enable-stdcall-fixup \
+#	                       $^ $(LDLIBS)
+#
+
 $(LIBDIR)/$(GL_DLL) $(LIBDIR)/$(GL_IMP): $(OBJECTS) $(RESOURCE)
-	$(TOOLS_PREFIX)dllwrap -o $(LIBDIR)/$(GL_DLL) --output-lib $(LIBDIR)/$(GL_IMP) \
-	                       --target i386-mingw32 --def $(GL_DEF) -Wl,-enable-stdcall-fixup \
-	                       $^ $(LDLIBS)
+	dllwrap -o $(LIBDIR)/$(GL_DLL) --output-lib $(LIBDIR)/$(GL_IMP) --target i386-mingw32 --def $(GL_DEF) $^ $(LDLIBS)
+
+
+# Nejc
+#drivers/glide/fx.o: drivers/glide/fx.rc
+#windres drivers/glide/fx.rc -o drivers/glide/fx.o
+
 
 $(X86_OBJECTS): x86/matypes.h
 
