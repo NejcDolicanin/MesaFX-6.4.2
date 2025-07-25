@@ -66,6 +66,9 @@ CFLAGS += -O2 -ffast-math
 
 export CFLAGS
 
+# Nejc Define MAKE explicitly to avoid path issues
+MAKE = make
+
 #Nejc
 #ifeq ($(wildcard $(addsuffix /rm.exe,$(subst ;, ,$(PATH)))),)
 #UNLINK = del $(subst /,\,$(1))

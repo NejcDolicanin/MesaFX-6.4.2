@@ -2176,6 +2176,10 @@ fxSetupDDPointers(GLcontext * ctx)
    }
 
    fxSetupDDSpanPointers(ctx);
+   
+   /* Nejc: Initialize framebuffer functions for Mesa 6.3+ */
+   fxInitFramebufferFuncs(ctx);
+   
    fxDDUpdateDDPointers(ctx, ~0);
 }
 

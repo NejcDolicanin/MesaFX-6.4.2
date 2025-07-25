@@ -383,6 +383,11 @@ fxMesaCreateContext(GLuint win,
                       Glide->txMipQuantize &&
                       Glide->txPalToNcc && !getenv("MESA_FX_IGNORE_TEXUS2");
 
+ /* Nejc 16bit Textures override from 3dfx tools */
+ //if (Glide->grGetRegistryOrEnvironmentStringExt("FX_MESA_FORCE_16BPP_TEXTURES") != NULL) {
+ //   fxMesa->HaveTexFmt = GL_FALSE;
+ //}
+
  /* Determine if we need vertex swapping, RGB order and SLI/AA */
  sliaa = 0;
  switch (fxMesa->type) {
@@ -639,7 +644,7 @@ fxMesaCreateContext(GLuint win,
                       fxMesa->snapVertices ? "" : "no ");
    }
 
-  sprintf(fxMesa->rendererString, "Mesa %s v0.63 %s%s",
+  sprintf(fxMesa->rendererString, "Mesa %s v0.64 %s%s",
           grGetString(GR_RENDERER),
           grGetString(GR_HARDWARE),
           ((fxMesa->type < GR_SSTTYPE_Voodoo4) && (voodoo->numChips > 1)) ? " SLI" : "");
@@ -679,19 +684,23 @@ fxMesaCreateContext(GLuint win,
    }
 
 
-   fxMesa->glBuffer = _mesa_create_framebuffer(fxMesa->glVis);
-#if 0
+   /* Nejc: Use new framebuffer infrastructure with renderbuffers */
+   fxMesa->glBuffer = fxNewFramebuffer(ctx, fxMesa->glVis);
+// OLD   fxMesa->glBuffer = _mesa_create_framebuffer(fxMesa->glVis);
+//#if 0
 /* XXX this is a complete mess :(
  *	_mesa_add_soft_renderbuffers
  *	driNewRenderbuffer
  */
-					       GL_FALSE,	/* no software depth */
-					       stencilSize && !fxMesa->haveHwStencil,
-					       fxMesa->glVis->accumRedBits > 0,
-					       alphaSize && !fxMesa->haveHwAlpha);
-#endif
+//					       GL_FALSE,	/* no software depth */
+//					       stencilSize && !fxMesa->haveHwStencil,
+//					       fxMesa->glVis->accumRedBits > 0,
+//					       alphaSize && !fxMesa->haveHwAlpha);
+//#endif
+
    if (!fxMesa->glBuffer) {
-      str = "_mesa_create_framebuffer";
+      // OLD str = "_mesa_create_framebuffer";
+      str = "fxNewFramebuffer";
       goto errorhandler;
    }
 
@@ -746,12 +755,18 @@ errorhandler:
 
 /*
  * Function to set the new window size in the context (mainly for the Voodoo Rush)
+ * Nejc: Updated to use new framebuffer infrastructure
  */
 void GLAPIENTRY
 fxMesaUpdateScreenSize(fxMesaContext fxMesa)
 {
    fxMesa->width = FX_grSstScreenWidth();
    fxMesa->height = FX_grSstScreenHeight();
+   
+   /* Nejc Update framebuffer size using new infrastructure */
+   if (fxMesa->glCtx) {
+      fxUpdateFramebufferSize(fxMesa->glCtx);
+   }
 }
 
 

@@ -58,6 +58,9 @@
 #include "fxglidew.h"
 
 #include "math/m_vector.h"
+// Nejc Added new framebuffer and renderbuffer includes
+#include "renderbuffer.h"
+#include "framebuffer.h"
 
 
 /* Define some shorter names for these things.
@@ -731,6 +734,49 @@ void fxSetupStencilFace (GLcontext *ctx, GLint face);
 #define FX_FALLBACK_TEXTURE_MULTI	0x0400
 
 extern GLuint fx_check_IsInHardware(GLcontext *ctx);
+
+/* Nejc fxrenderbuffer.c - New Mesa 6.3+ renderbuffer functions */
+extern struct gl_renderbuffer *
+fxNewColorRenderbuffer(GLcontext *ctx, GLuint name, GLenum internalFormat);
+
+extern struct gl_renderbuffer *
+fxNewDepthRenderbuffer(GLcontext *ctx, GLuint name);
+
+extern struct gl_renderbuffer *
+fxNewStencilRenderbuffer(GLcontext *ctx, GLuint name);
+
+extern void
+fxSetSpanFunctions(struct gl_renderbuffer *rb, const GLvisual *vis);
+
+/* Span function prototypes for renderbuffers */
+extern void fxReadRGBASpan_ARGB8888(const GLcontext *ctx, struct gl_renderbuffer *rb,
+                                    GLuint n, GLint x, GLint y, GLubyte rgba[][4]);
+extern void fxReadRGBASpan_RGB565(const GLcontext *ctx, struct gl_renderbuffer *rb,
+                                  GLuint n, GLint x, GLint y, GLubyte rgba[][4]);
+extern void fxReadRGBASpan_ARGB1555(const GLcontext *ctx, struct gl_renderbuffer *rb,
+                                    GLuint n, GLint x, GLint y, GLubyte rgba[][4]);
+extern void fxReadDepthSpan_Z24(const GLcontext *ctx, struct gl_renderbuffer *rb,
+                                GLuint n, GLint x, GLint y, GLuint depth[]);
+extern void fxReadDepthSpan_Z16(const GLcontext *ctx, struct gl_renderbuffer *rb,
+                                GLuint n, GLint x, GLint y, GLuint depth[]);
+extern void fxReadStencilSpan(const GLcontext *ctx, struct gl_renderbuffer *rb,
+                              GLuint n, GLint x, GLint y, GLubyte stencil[]);
+extern void fxWriteStencilSpan(const GLcontext *ctx, struct gl_renderbuffer *rb,
+                               GLuint n, GLint x, GLint y, const GLubyte stencil[],
+                               const GLubyte mask[]);
+extern void fxWriteStencilPixels(const GLcontext *ctx, struct gl_renderbuffer *rb,
+                                 GLuint n, const GLint x[], const GLint y[],
+                                 const GLubyte stencil[], const GLubyte mask[]);
+
+/* Nejc fxframebuffer.c - New Mesa 6.3+ framebuffer functions */
+extern struct gl_framebuffer *
+fxNewFramebuffer(GLcontext *ctx, const GLvisual *visual);
+
+extern void
+fxUpdateFramebufferSize(GLcontext *ctx);
+
+extern void
+fxInitFramebufferFuncs(struct dd_function_table *functions);
 
 /***
  *** CNORM: clamp float to [0,1] and map to float in [0,255]

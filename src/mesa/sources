@@ -270,6 +270,8 @@ GLIDE_DRIVER_SOURCES =			\
 	drivers/glide/fxdd.c		\
 	drivers/glide/fxddspan.c	\
 	drivers/glide/fxddtex.c		\
+	drivers/glide/fxframebuffer.c	\
+	drivers/glide/fxrenderbuffer.c	\
 	drivers/glide/fxsetup.c		\
 	drivers/glide/fxtexman.c	\
 	drivers/glide/fxtris.c		\

@@ -329,8 +329,10 @@
    * Read a span of 15-bit RGB pixels.  Note, we don't worry about cliprects
    * since OpenGL says obscured pixels have undefined values.
    */
-static void fxReadRGBASpan_ARGB1555(const GLcontext* ctx,
-	struct gl_renderbuffer* rb,
+/* Nejc: Commented out - Mesa 6.3+ version now in fxrenderbuffer.c */
+/*
+void fxReadRGBASpan_ARGB1555(const GLcontext* ctx,
+ struct gl_renderbuffer* rb,
 	GLuint n,
 	GLint x, GLint y,
 	GLubyte rgba[][4])
@@ -372,12 +374,15 @@ static void fxReadRGBASpan_ARGB1555(const GLcontext* ctx,
 		grLfbUnlock(GR_LFB_READ_ONLY, fxMesa->currentFB);
 	}
 }
+*/
 
+/* Nejc: Commented out - Mesa 6.3+ versions now in fxrenderbuffer.c */
 /*
  * Read a span of 16-bit RGB pixels.  Note, we don't worry about cliprects
  * since OpenGL says obscured pixels have undefined values.
  */
-static void fxReadRGBASpan_RGB565(const GLcontext* ctx,
+/*
+void fxReadRGBASpan_RGB565(const GLcontext* ctx,
 	struct gl_renderbuffer* rb,
 	GLuint n,
 	GLint x, GLint y,
@@ -420,12 +425,15 @@ static void fxReadRGBASpan_RGB565(const GLcontext* ctx,
 		grLfbUnlock(GR_LFB_READ_ONLY, fxMesa->currentFB);
 	}
 }
+*/
 
+/* Nejc: Commented out - Mesa 6.3+ version now in fxrenderbuffer.c */
 /*
  * Read a span of 32-bit RGB pixels.  Note, we don't worry about cliprects
  * since OpenGL says obscured pixels have undefined values.
  */
-static void fxReadRGBASpan_ARGB8888(const GLcontext* ctx,
+/*
+void fxReadRGBASpan_ARGB8888(const GLcontext* ctx,
 	struct gl_renderbuffer* rb,
 	GLuint n,
 	GLint x, GLint y,
@@ -440,14 +448,17 @@ static void fxReadRGBASpan_ARGB8888(const GLcontext* ctx,
 		rgba[i][2] = c;
 	}
 }
+*/
 
 
+/* Nejc: Commented out - Mesa 6.3+ versions now in fxrenderbuffer.c */
 /************************************************************************/
 /*****                    Depth functions (optimized)               *****/
 /************************************************************************/
 
-static void
-fxReadDepthSpan_Z16(GLcontext* ctx, struct gl_renderbuffer* rb,
+/*
+void
+fxReadDepthSpan_Z16(const GLcontext* ctx, struct gl_renderbuffer* rb,
 	GLuint n, GLint x, GLint y, GLdepth depth[])
 {
 	fxMesaContext fxMesa = FX_CONTEXT(ctx);
@@ -466,8 +477,8 @@ fxReadDepthSpan_Z16(GLcontext* ctx, struct gl_renderbuffer* rb,
 }
 
 
-static void
-fxReadDepthSpan_Z24(GLcontext* ctx, struct gl_renderbuffer* rb,
+void
+fxReadDepthSpan_Z24(const GLcontext* ctx, struct gl_renderbuffer* rb,
 	GLuint n, GLint x, GLint y, GLdepth depth[])
 {
 	fxMesaContext fxMesa = FX_CONTEXT(ctx);
@@ -483,24 +494,24 @@ fxReadDepthSpan_Z24(GLcontext* ctx, struct gl_renderbuffer* rb,
 		depth[i] &= 0xffffff;
 	}
 }
+*/
 
-
+/* Nejc: Commented out - Mesa 6.3+ versions now in fxrenderbuffer.c */
 /************************************************************************/
 /*****                    Stencil functions (optimized)             *****/
 /************************************************************************/
 
-static void
-fxWriteStencilSpan(GLcontext* ctx, struct gl_renderbuffer* rb,
+/*
+void
+fxWriteStencilSpan(const GLcontext* ctx, struct gl_renderbuffer* rb,
 	GLuint n, GLint x, GLint y,
 	const GLstencil stencil[], const GLubyte mask[])
 {
-	/*
-	 * XXX todo
-	 */
+	// XXX todo
 }
 
-static void
-fxReadStencilSpan(GLcontext* ctx, struct gl_renderbuffer* rb,
+void
+fxReadStencilSpan(const GLcontext* ctx, struct gl_renderbuffer* rb,
 	GLuint n, GLint x, GLint y, GLstencil stencil[])
 {
 	fxMesaContext fxMesa = FX_CONTEXT(ctx);
@@ -518,16 +529,15 @@ fxReadStencilSpan(GLcontext* ctx, struct gl_renderbuffer* rb,
 	}
 }
 
-static void
-fxWriteStencilPixels(GLcontext* ctx, struct gl_renderbuffer* rb, GLuint n,
+void
+fxWriteStencilPixels(const GLcontext* ctx, struct gl_renderbuffer* rb, GLuint n,
 	const GLint x[], const GLint y[],
 	const GLstencil stencil[],
 	const GLubyte mask[])
 {
-	/*
-	 * XXX todo
-	 */
+	// XXX todo
 }
+*/
 
 static void
 fxReadStencilPixels(GLcontext* ctx, struct gl_renderbuffer* rb, GLuint n,
@@ -541,11 +551,17 @@ fxReadStencilPixels(GLcontext* ctx, struct gl_renderbuffer* rb, GLuint n,
 
 
 
+/* Nejc: Old buffer access function - commented out for Mesa 6.3+ renderbuffer infrastructure */
 /*
  * This function is called to specify which buffer to read and write
  * for software rasterization (swrast) fallbacks.  This doesn't necessarily
  * correspond to glDrawBuffer() or glReadBuffer() calls.
+ * 
+ * NOTE: This function is obsolete in Mesa 6.3+ and replaced by:
+ * - fxSetReadBuffer() and fxSetDrawBuffer() in fxframebuffer.c
+ * - Individual renderbuffer GetRow/PutRow functions
  */
+/*
 static void
 fxDDSetBuffer(GLcontext* ctx, GLframebuffer* buffer, GLuint bufferBit)
 {
@@ -565,6 +581,7 @@ fxDDSetBuffer(GLcontext* ctx, GLframebuffer* buffer, GLuint bufferBit)
 		grRenderBuffer(fxMesa->currentFB);
 	}
 }
+*/
 
 
 /************************************************************************/
@@ -588,25 +605,46 @@ void fxSpanRenderFinish(GLcontext* ctx)
 	UNLOCK_HARDWARE(fxMesa);
 }
 
+/* Nejc: Old span function setup - commented out for Mesa 6.3+ renderbuffer infrastructure */
+/*
 void fxDDInitSpanFuncs(GLcontext* ctx)
 {
 	fxMesaContext fxMesa = FX_CONTEXT(ctx);
 	struct swrast_device_driver* swdd = _swrast_GetDeviceDriverReference(ctx);
 
 	swdd->SetBuffer = fxDDSetBuffer;
+	swdd->SpanRenderStart = fxSpanRenderStart; 
+	swdd->SpanRenderFinish = fxSpanRenderFinish;
+}
+*/
+
+/* Nejc: Updated for Mesa 6.3+ - span functions now handled via renderbuffer interface */
+void fxDDInitSpanFuncs(GLcontext* ctx)
+{
+	/* Mesa 6.3+ uses renderbuffer GetRow/PutRow functions instead of span functions */
+	/* Span functions are now set up in fxSetSpanFunctions() in fxrenderbuffer.c */
+	
+	/* Keep the render start/finish functions for hardware locking */
+	struct swrast_device_driver* swdd = _swrast_GetDeviceDriverReference(ctx);
 	swdd->SpanRenderStart = fxSpanRenderStart; /* BEGIN_BOARD_LOCK */
 	swdd->SpanRenderFinish = fxSpanRenderFinish; /* END_BOARD_LOCK */
 }
 
 void fxSetupDDSpanPointers(GLcontext* ctx)
 {
+	/* Nejc: Mesa 6.3+ - span functions are now handled through renderbuffer interface */
+	/* The old SetBuffer function is replaced by framebuffer SetReadBuffer/SetDrawBuffer */
+/**
 	struct swrast_device_driver* swdd = _swrast_GetDeviceDriverReference(ctx);
 	fxMesaContext fxMesa = FX_CONTEXT(ctx);
-	(void)fxMesa; /* silence unused variable warning */
+	(void)fxMesa;  //silence unused variable warning
 
 	swdd->SetBuffer = fxDDSetBuffer;
-	/* Note: In Mesa 6.4.2, span functions are no longer part of swrast_device_driver */
-	/* They are handled through the new renderbuffer interface */
+	*/
+	/* Individual span functions are set up per-renderbuffer in fxSetSpanFunctions() */
+	
+	/* Keep render start/finish for compatibility */
+	fxDDInitSpanFuncs(ctx);
 }
 
 #else
