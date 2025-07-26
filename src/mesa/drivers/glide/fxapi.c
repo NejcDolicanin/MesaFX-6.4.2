@@ -228,12 +228,27 @@ static GrScreenResolution_t fxBestResolution (int width, int height)
         { GR_RESOLUTION_1856x1392, 1856, 1392 },
         { GR_RESOLUTION_1920x1440, 1920, 1440 },
         { GR_RESOLUTION_2048x1536, 2048, 1536 },
-        { GR_RESOLUTION_2048x2048, 2048, 2048 }
+        { GR_RESOLUTION_2048x2048, 2048, 2048 },
+        /* nd Extended */
+		  { GR_RESOLUTION_1280x720,  1280,   720 },
+		  { GR_RESOLUTION_1280x800,  1280,   800 },
+		  { GR_RESOLUTION_1360x768,  1360,   768 },
+		  { GR_RESOLUTION_1440x900,  1440,   900 },
+		  { GR_RESOLUTION_1600x900,  1600,   900 },
+		  { GR_RESOLUTION_1680x720,  1680,   720 },
+		  { GR_RESOLUTION_1680x1050, 1680,  1050 },
+		  { GR_RESOLUTION_1792x768,  1792,   768 },
+		  { GR_RESOLUTION_1920x800,  1920,   800 },
+		  { GR_RESOLUTION_1920x1080, 1920,  1080 },
+		  { GR_RESOLUTION_1920x1200, 1920,  1200 },
+		  /* This one added so we have an unreachable max, if more come */
+		  { GR_RESOLUTION_3840x2160, 3840,  2160 }
  };
 
  int i, size;
  int lastvalidres = GR_RESOLUTION_640x480;
- int min = 2048 * 2048; /* max is GR_RESOLUTION_2048x2048 */
+ /* int min = 2048 * 2048; */ /* max is GR_RESOLUTION_2048x2048 */
+ int min = 3840 * 2160;
  GrResolution resTemplate = {
               GR_QUERY_ANY,
               GR_QUERY_ANY,
