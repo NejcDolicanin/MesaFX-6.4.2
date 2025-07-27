@@ -55,6 +55,7 @@ extern "C" {
 #include "glapi.h"
 #include "imports.h"
 #include "../../glide/fxdrv.h"
+#include "../../glide/fxutil.h"
 
 #define MAX_MESA_ATTRS  20
 
@@ -813,6 +814,16 @@ wglSwapLayerBuffers (HDC hdc, UINT fuPlanes)
 static int
 pfd_tablen (void)
 {
+//  int boardType;
+   
+//    /* Check for forced 16-bit pixel format registry/environment variable */
+//    if (fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_PIX") != NULL) {
+//       boardType = fxMesaSelectCurrentBoard(0);
+//       if (boardType == GR_SSTTYPE_Voodoo5 || boardType == GR_SSTTYPE_Voodoo4) {
+//          return 2; /* Force only 16-bit entries for Voodoo4/5 */
+//       }
+//    }
+
    /* we should take an envvar for `fxMesaSelectCurrentBoard' */
    return (fxMesaSelectCurrentBoard(0) < GR_SSTTYPE_Voodoo4)
          ? 2                      /* only 16bit entries */
@@ -827,6 +838,10 @@ wglChoosePixelFormat (HDC hdc, const PIXELFORMATDESCRIPTOR *ppfd)
 
    qt_valid_pix = pfd_tablen();
 
+//  if (fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_PIX") != NULL) {
+//          int boardType = fxMesaSelectCurrentBoard(0);
+//          if (boardType == GR_SSTTYPE_Voodoo5 || boardType == GR_SSTTYPE_Voodoo4) {
+
 #if 1 || QUAKE2 || GORE
    /* QUAKE2: 24+32 */
    /* GORE  : 24+16 */
@@ -839,7 +854,29 @@ wglChoosePixelFormat (HDC hdc, const PIXELFORMATDESCRIPTOR *ppfd)
    } else if (pfd.cColorBits == 16) {
       pfd.cDepthBits = 16;
    }
+
+   // Temp 16bit override
+   if (fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_PIX") != NULL)
+   {
+      pfd.cDepthBits = 16;
+      pfd.cColorBits = 16;
+   }
+
 #endif
+
+/* Check for forced 16-bit pixel format registry/environment variable - AFTER game-specific logic */
+   // if (fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_PIX") != NULL) {
+   //    int boardType = fxMesaSelectCurrentBoard(0);
+   //    if (boardType == GR_SSTTYPE_Voodoo5 || boardType == GR_SSTTYPE_Voodoo4) {
+   //       /* Force 16-bit color depth and return appropriate format - overrides everything */
+   //       if (pfd.dwFlags & PFD_DOUBLEBUFFER) {
+   //          return 2; /* 16-bit RGB565 double buffer */
+   //       } else {
+   //          return 1; /* 16-bit RGB565 single buffer */
+   //       }
+   //    }
+   // }
+
 
    if (pfd.nSize != sizeof(PIXELFORMATDESCRIPTOR) || pfd.nVersion != 1) {
       SetLastError(0);
@@ -981,6 +1018,20 @@ wglSetPixelFormat (HDC hdc, int iPixelFormat, const PIXELFORMATDESCRIPTOR *ppfd)
    int qt_valid_pix;
 
    qt_valid_pix = pfd_tablen();
+
+   /* Check for forced 16-bit pixel format registry/environment variable */
+   if (fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_PIX") != NULL) {
+      int boardType = fxMesaSelectCurrentBoard(0);
+      if (boardType == GR_SSTTYPE_Voodoo5 || boardType == GR_SSTTYPE_Voodoo4) {
+         /* Force 16-bit pixel format - override any requested format */
+         if (ppfd && (ppfd->dwFlags & PFD_DOUBLEBUFFER)) {
+            curPFD = 2; /* 16-bit RGB565 double buffer */
+         } else {
+            curPFD = 1; /* 16-bit RGB565 single buffer */
+         }
+         return TRUE;
+      }
+   }
 
    if (iPixelFormat < 1 || iPixelFormat > qt_valid_pix) {
       if (ppfd == NULL) {

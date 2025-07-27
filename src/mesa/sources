@@ -277,7 +277,8 @@ GLIDE_DRIVER_SOURCES =			\
 	drivers/glide/fxtris.c		\
 	drivers/glide/fxvb.c		\
 	drivers/glide/fxglidew.c	\
-	drivers/glide/fxg.c
+	drivers/glide/fxg.c			\
+	drivers/glide/fxutil.c
 
 SVGA_DRIVER_SOURCES =			\
 	drivers/svga/svgamesa.c		\
