@@ -255,9 +255,22 @@ fxSetDrawBuffer(GLcontext *ctx, GLenum buffer)
 void
 fxInitFramebufferFuncs(struct dd_function_table *functions)
 {
-   // Mesa6.3+ renderbuffer infrastructure changed from  functions->SetReadBuffer
+   //Debug
+   FILE *debug_log = fopen("Mesa.log", "a");
+   if (debug_log) {
+      fprintf(debug_log, "fxInitFramebufferFuncs: Starting\n");
+      fclose(debug_log);
+   }
+
+   // Mesa 6.4.2 renderbuffer infrastructure uses these function pointers
    functions->ReadBuffer = fxSetReadBuffer;
    functions->DrawBuffer = fxSetDrawBuffer;
+
+   debug_log = fopen("Mesa.log", "a");
+   if (debug_log) {
+      fprintf(debug_log, "fxInitFramebufferFuncs: Completed\n");
+      fclose(debug_log);
+   }
 }
 
 #endif /* FX */

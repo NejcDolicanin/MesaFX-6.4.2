@@ -50,6 +50,121 @@ fxNewStencilRenderbuffer(GLcontext *ctx, GLuint name);
 extern void
 fxSetSpanFunctions(struct gl_renderbuffer *rb, const GLvisual *vis);
 
+/* Span function declarations */
+extern void fxReadRGBASpan_ARGB8888(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                    GLuint count, GLint x, GLint y, void *values);
+extern void fxReadRGBAPixels_ARGB8888(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                      GLuint count, const GLint x[], const GLint y[],
+                                      void *values);
+
+extern void fxWriteRGBASpan_ARGB8888(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                     GLuint count, GLint x, GLint y, const void *values,
+                                     const GLubyte *mask);
+extern void fxWriteRGBSpan_ARGB8888(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                    GLuint count, GLint x, GLint y, const void *values,
+                                    const GLubyte *mask);
+extern void fxWriteMonoRGBASpan_ARGB8888(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                         GLuint count, GLint x, GLint y, const void *value,
+                                         const GLubyte *mask);
+extern void fxWriteRGBAPixels_ARGB8888(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                       GLuint count, const GLint x[], const GLint y[],
+                                       const void *values, const GLubyte *mask);
+extern void fxWriteMonoRGBAPixels_ARGB8888(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                           GLuint count, const GLint x[], const GLint y[],
+                                           const void *value, const GLubyte *mask);
+
+extern void fxReadRGBASpan_RGB565(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                  GLuint count, GLint x, GLint y, void *values);
+extern void fxReadRGBAPixels_RGB565(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                    GLuint count, const GLint x[], const GLint y[],
+                                    void *values);
+extern void fxWriteRGBASpan_RGB565(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                   GLuint count, GLint x, GLint y, const void *values,
+                                   const GLubyte *mask);
+extern void fxWriteRGBSpan_RGB565(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                  GLuint count, GLint x, GLint y, const void *values,
+                                  const GLubyte *mask);
+extern void fxWriteMonoRGBASpan_RGB565(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                       GLuint count, GLint x, GLint y, const void *value,
+                                       const GLubyte *mask);
+extern void fxWriteRGBAPixels_RGB565(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                     GLuint count, const GLint x[], const GLint y[],
+                                     const void *values, const GLubyte *mask);
+extern void fxWriteMonoRGBAPixels_RGB565(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                         GLuint count, const GLint x[], const GLint y[],
+                                         const void *value, const GLubyte *mask);
+extern void fxReadRGBASpan_ARGB1555(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                    GLuint count, GLint x, GLint y, void *values);
+extern void fxReadRGBAPixels_ARGB1555(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                      GLuint count, const GLint x[], const GLint y[],
+                                      void *values);
+extern void fxWriteRGBASpan_ARGB1555(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                     GLuint count, GLint x, GLint y, const void *values,
+                                     const GLubyte *mask);
+extern void fxWriteRGBSpan_ARGB1555(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                    GLuint count, GLint x, GLint y, const void *values,
+                                    const GLubyte *mask);
+extern void fxWriteMonoRGBASpan_ARGB1555(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                         GLuint count, GLint x, GLint y, const void *value,
+                                         const GLubyte *mask);
+extern void fxWriteRGBAPixels_ARGB1555(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                       GLuint count, const GLint x[], const GLint y[],
+                                       const void *values, const GLubyte *mask);
+extern void fxWriteMonoRGBAPixels_ARGB1555(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                           GLuint count, const GLint x[], const GLint y[],
+                                           const void *value, const GLubyte *mask);
+extern void fxReadDepthSpan_Z24(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                GLuint count, GLint x, GLint y, void *values);
+extern void fxReadDepthPixels_Z24(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                  GLuint count, const GLint x[], const GLint y[],
+                                  void *values);
+extern void fxWriteDepthSpan_Z24(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                 GLuint count, GLint x, GLint y, const void *values,
+                                 const GLubyte *mask);
+extern void fxWriteMonoDepthSpan_Z24(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                     GLuint count, GLint x, GLint y, const void *value,
+                                     const GLubyte *mask);
+extern void fxWriteDepthPixels_Z24(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                   GLuint count, const GLint x[], const GLint y[],
+                                   const void *values, const GLubyte *mask);
+// extern void fxWriteMonoDepthPixels_Z24(GLcontext *ctx, struct gl_renderbuffer *rb,
+//                                        GLuint count, const GLint x[], const GLint y[],
+//                                        const void *value, const GLubyte *mask);
+extern void fxReadDepthSpan_Z16(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                GLuint count, GLint x, GLint y, void *values);
+extern void fxReadDepthPixels_Z16(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                  GLuint count, const GLint x[], const GLint y[],
+                                  void *values);
+extern void fxWriteDepthSpan_Z16(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                 GLuint count, GLint x, GLint y, const void *values,
+                                 const GLubyte *mask);
+extern void fxWriteMonoDepthSpan_Z16(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                     GLuint count, GLint x, GLint y, const void *value,
+                                     const GLubyte *mask);
+extern void fxWriteDepthPixels_Z16(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                   GLuint count, const GLint x[], const GLint y[],
+                                   const void *values, const GLubyte *mask);
+extern void fxWriteMonoDepthPixels_Z16(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                       GLuint count, const GLint x[], const GLint y[],
+                                       const void *value, const GLubyte *mask);
+extern void fxReadStencilSpan(GLcontext *ctx, struct gl_renderbuffer *rb,
+                              GLuint count, GLint x, GLint y, void *values);
+extern void fxReadStencilPixels(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                GLuint count, const GLint x[], const GLint y[],
+                                void *values);
+extern void fxWriteStencilSpan(GLcontext *ctx, struct gl_renderbuffer *rb,
+                               GLuint count, GLint x, GLint y, const void *values,
+                               const GLubyte *mask);
+extern void fxWriteMonoStencilSpan(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                   GLuint count, GLint x, GLint y, const void *value,
+                                   const GLubyte *mask);
+extern void fxWriteStencilPixels(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                 GLuint count, const GLint x[], const GLint y[],
+                                 const void *values, const GLubyte *mask);
+// extern void fxWriteMonoStencilPixels(GLcontext *ctx, struct gl_renderbuffer *rb,
+//                                      GLuint count, const GLint x[], const GLint y[],
+//                                      const void *value, const GLubyte *mask);
+
 #endif /* FX */
 
 #endif /* FXRENDERBUFFER_H */

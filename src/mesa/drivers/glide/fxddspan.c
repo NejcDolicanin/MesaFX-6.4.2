@@ -147,8 +147,11 @@
 	rgba[3] = (p & 0x8000) ? 255 : 0;				\
     } while (0)
 
+/* Nejc: Commented out software fallback - using new renderbuffer span functions */
+/*
 #define TAG(x) tdfx##x##_ARGB1555
 #include "../dri/common/spantmp.h"
+*/
 
 
 /* 16 bit, RGB565 color spanline and pixel functions */
@@ -186,8 +189,11 @@
 	rgba[3] = 0xff;							\
     } while (0)
 
+/* Nejc: Commented out software fallback - using new renderbuffer span functions */
+/*
 #define TAG(x) tdfx##x##_RGB565
 #include "../dri/common/spantmp.h"
+*/
 
 
  /* 32 bit, ARGB8888 color spanline and pixel functions */
@@ -218,8 +224,11 @@
         rgba[3] = (p >> 24) & 0xff;					\
     } while (0)
 
+/* Nejc: Commented out software fallback - using new renderbuffer span functions */
+/*
 #define TAG(x) tdfx##x##_ARGB8888
 #include "../dri/common/spantmp.h"
+*/
 
 
 /************************************************************************/
@@ -279,8 +288,11 @@
 #define READ_DEPTH( d, _x, _y )						\
     d = *(GLushort *)(buf + _x*BYTESPERPIXEL + _y*pitch)
 
+/* Nejc: Commented out software fallback - using new renderbuffer span functions */
+/*
 #define TAG(x) tdfx##x##_Z16
 #include "../dri/common/depthtmp.h"
+*/
 
 
 /* 24 bit, depth spanline and pixel functions (for use w/ stencil) */
@@ -306,8 +318,11 @@
 #define READ_DEPTH( d, _x, _y )						\
     d = (*(GLuint *)(buf + _x*BYTESPERPIXEL + _y*pitch)) & 0xffffff
 
+/* Nejc: Commented out software fallback - using new renderbuffer span functions */
+/*
 #define TAG(x) tdfx##x##_Z24
 #include "../dri/common/depthtmp.h"
+*/
 
 
  /* 32 bit, depth spanline and pixel functions (for use w/o stencil) */

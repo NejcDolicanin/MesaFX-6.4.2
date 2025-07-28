@@ -749,24 +749,24 @@ extern void
 fxSetSpanFunctions(struct gl_renderbuffer *rb, const GLvisual *vis);
 
 /* Span function prototypes for renderbuffers */
-extern void fxReadRGBASpan_ARGB8888(const GLcontext *ctx, struct gl_renderbuffer *rb,
-                                    GLuint n, GLint x, GLint y, GLubyte rgba[][4]);
-extern void fxReadRGBASpan_RGB565(const GLcontext *ctx, struct gl_renderbuffer *rb,
-                                  GLuint n, GLint x, GLint y, GLubyte rgba[][4]);
-extern void fxReadRGBASpan_ARGB1555(const GLcontext *ctx, struct gl_renderbuffer *rb,
-                                    GLuint n, GLint x, GLint y, GLubyte rgba[][4]);
-extern void fxReadDepthSpan_Z24(const GLcontext *ctx, struct gl_renderbuffer *rb,
-                                GLuint n, GLint x, GLint y, GLuint depth[]);
-extern void fxReadDepthSpan_Z16(const GLcontext *ctx, struct gl_renderbuffer *rb,
-                                GLuint n, GLint x, GLint y, GLuint depth[]);
-extern void fxReadStencilSpan(const GLcontext *ctx, struct gl_renderbuffer *rb,
-                              GLuint n, GLint x, GLint y, GLubyte stencil[]);
-extern void fxWriteStencilSpan(const GLcontext *ctx, struct gl_renderbuffer *rb,
-                               GLuint n, GLint x, GLint y, const GLubyte stencil[],
-                               const GLubyte mask[]);
-extern void fxWriteStencilPixels(const GLcontext *ctx, struct gl_renderbuffer *rb,
-                                 GLuint n, const GLint x[], const GLint y[],
-                                 const GLubyte stencil[], const GLubyte mask[]);
+extern void fxReadRGBASpan_ARGB8888(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                    GLuint count, GLint x, GLint y, void *values);
+extern void fxReadRGBASpan_RGB565(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                  GLuint count, GLint x, GLint y, void *values);
+extern void fxReadRGBASpan_ARGB1555(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                    GLuint count, GLint x, GLint y, void *values);
+extern void fxReadDepthSpan_Z24(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                GLuint count, GLint x, GLint y, void *values);
+extern void fxReadDepthSpan_Z16(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                GLuint count, GLint x, GLint y, void *values);
+extern void fxReadStencilSpan(GLcontext *ctx, struct gl_renderbuffer *rb,
+                              GLuint count, GLint x, GLint y, void *values);
+extern void fxWriteStencilSpan(GLcontext *ctx, struct gl_renderbuffer *rb,
+                               GLuint count, GLint x, GLint y, const void *values,
+                               const GLubyte *mask);
+extern void fxWriteStencilPixels(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                 GLuint count, const GLint x[], const GLint y[],
+                                 const void *values, const GLubyte *mask);
 
 /* Nejc fxframebuffer.c - New Mesa 6.3+ framebuffer functions */
 extern struct gl_framebuffer *

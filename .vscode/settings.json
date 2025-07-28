@@ -1,5 +1,8 @@
 {
     "files.associations": {
-        "fxhelpers.h": "c"
+        "fxhelpers.h": "c",
+        "renderbuffer.h": "c",
+        "framebuffer.h": "c",
+        "fxrenderbuffer.h": "c"
     }
 }

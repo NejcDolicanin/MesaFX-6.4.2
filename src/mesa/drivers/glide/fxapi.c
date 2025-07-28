@@ -400,14 +400,14 @@ fxMesaCreateContext(GLuint win,
                       Glide->txPalToNcc && !getenv("MESA_FX_IGNORE_TEXUS2");
 
 // Debug
-const char *force16bpp_setting = NULL;
-FILE *debug_log = fopen("Mesa.log", "a");
-if (debug_log) {
-   force16bpp_setting = fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_TEXTURES");
-   fprintf(debug_log, "=== Debugging FX_MESA_FORCE_16BPP_TEXTURES ===\n");
-   fprintf(debug_log, "Value: %s\n", force16bpp_setting ? force16bpp_setting : "(null)");
-   fclose(debug_log);
-}
+// const char *force16bpp_setting = NULL;
+// FILE *debug_log = fopen("Mesa.log", "a");
+// if (debug_log) {
+//    force16bpp_setting = fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_TEXTURES");
+//    fprintf(debug_log, "=== Debugging FX_MESA_FORCE_16BPP_TEXTURES ===\n");
+//    fprintf(debug_log, "Value: %s\n", force16bpp_setting ? force16bpp_setting : "(null)");
+//    fclose(debug_log);
+// }
 
  /* Nejc 16bit Textures override from 3dfx tools */
  if (fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_TEXTURES") != NULL ) {

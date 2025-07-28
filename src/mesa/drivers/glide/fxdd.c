@@ -1673,7 +1673,21 @@ fxDDInitFxMesaContext(fxMesaContext fxMesa)
 {
    GLcontext *ctx = fxMesa->glCtx;
 
+   //Debug
+   FILE *debug_log = fopen("Mesa.log", "a");
+   if (debug_log) {
+      fprintf(debug_log, "fxDDInitFxMesaContext: Starting initialization\n");
+      fclose(debug_log);
+   }
+
    FX_setupGrVertexLayout();
+
+   //Debug
+   debug_log = fopen("Mesa.log", "a");
+   if (debug_log) {
+      fprintf(debug_log, "fxDDInitFxMesaContext: FX_setupGrVertexLayout completed\n");
+      fclose(debug_log);
+   }
 
    fxMesa->color = 0xffffffff;
    fxMesa->clearC = 0;
