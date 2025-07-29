@@ -190,7 +190,7 @@ x86/gen_matypes.exe: x86/gen_matypes.c
 # Trick: change the following condition to
 # be always false if you need C entrypoints
 # with USE_X86_ASM (useful for trace/debug)
-ifeq (1,1)
+ifeq ($(X86),1)
 x86/glapi_x86.o: x86/glapi_x86.S
 	$(CC) -o $@ $(CFLAGS) -DSTDCALL_API -c $<
 else
@@ -217,6 +217,7 @@ clean:
 	-$(call UNLINK,swrast_setup/*.o)
 	-$(call UNLINK,tnl/*.o)
 	-$(call UNLINK,x86/*.o)
+	-$(call UNLINK,x86/rtasm/*.o)
 	-$(call UNLINK,drivers/common/*.o)
 	-$(call UNLINK,drivers/glide/*.o)
 	-$(call UNLINK,drivers/windows/fx/*.o)

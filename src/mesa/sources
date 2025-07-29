@@ -1,6 +1,6 @@
 ### Lists of source files, included by Makefiles
 
-MAIN_SOURCES = \
+MAIN_SOURCES_BASE = \
 	main/api_arrayelt.c \
 	main/api_loopback.c \
 	main/api_noop.c \
@@ -16,7 +16,6 @@ MAIN_SOURCES = \
 	main/convolve.c \
 	main/debug.c \
 	main/depth.c \
-	main/dispatch.c \
 	main/dlist.c \
 	main/drawpix.c \
 	main/enable.c \
@@ -59,6 +58,12 @@ MAIN_SOURCES = \
 	main/texstore.c \
 	main/varray.c \
 	main/vtxfmt.c
+
+# Include dispatch.c only when not using X86 assembly
+MAIN_SOURCES = $(MAIN_SOURCES_BASE)
+ifneq ($(X86),1)
+MAIN_SOURCES += main/dispatch.c
+endif
 
 GLAPI_SOURCES = \
 	glapi/glapi.c \

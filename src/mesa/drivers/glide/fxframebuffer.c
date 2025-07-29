@@ -46,7 +46,7 @@ fxNewFramebuffer(GLcontext *ctx, const GLvisual *visual)
 {
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    struct gl_framebuffer *fb;
-   struct gl_renderbuffer *frontRb, *backRb, *depthRb, *stencilRb;
+   struct gl_renderbuffer *frontRb, *backRb, *depthRb = NULL, *stencilRb;
    GLboolean swStencil;
 
    if (TDFX_DEBUG & VERBOSE_DRIVER) {
@@ -82,6 +82,8 @@ fxNewFramebuffer(GLcontext *ctx, const GLvisual *visual)
       return NULL;
    }
    _mesa_add_renderbuffer(fb, BUFFER_FRONT_LEFT, frontRb);
+   /* Set up span functions for front color buffer - Call #1 */
+   fxSetSpanFunctions(frontRb, visual);
 
    /* Create back color renderbuffer if double buffered */
    if (visual->doubleBufferMode) {
@@ -91,6 +93,8 @@ fxNewFramebuffer(GLcontext *ctx, const GLvisual *visual)
          return NULL;
       }
       _mesa_add_renderbuffer(fb, BUFFER_BACK_LEFT, backRb);
+      /* Set up span functions for back color buffer - Call #2 */
+      fxSetSpanFunctions(backRb, visual);
    }
 
    /* Create depth renderbuffer if needed */
@@ -101,6 +105,8 @@ fxNewFramebuffer(GLcontext *ctx, const GLvisual *visual)
          return NULL;
       }
       _mesa_add_renderbuffer(fb, BUFFER_DEPTH, depthRb);
+      /* Set up span functions for depth buffer - Call #3 */
+      fxSetSpanFunctions(depthRb, visual);
    }
 
    /* Create stencil renderbuffer if needed */
@@ -114,6 +120,15 @@ fxNewFramebuffer(GLcontext *ctx, const GLvisual *visual)
             return NULL;
          }
          _mesa_add_renderbuffer(fb, BUFFER_STENCIL, stencilRb);
+         /* Set up span functions for stencil buffer - Call #4 */
+         fxSetSpanFunctions(stencilRb, visual);
+         
+         /* Additional span function setup for combined depth/stencil context - Call #5 */
+         /* This matches the tdfx driver pattern where depth buffer span functions */
+         /* are set up again when stencil is also present (shared Z/S buffer) */
+         if (depthRb && visual->depthBits > 0) {
+            fxSetSpanFunctions(depthRb, visual);
+         }
       } else {
          /* Software stencil - let Mesa handle it */
          _mesa_add_soft_renderbuffers(fb, 

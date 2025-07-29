@@ -183,8 +183,7 @@ fxNewColorRenderbuffer(GLcontext *ctx, GLuint name, GLenum internalFormat)
    rb->AllocStorage = fxAllocColorRenderbuffer;
    rb->Delete = fxDeleteRenderbuffer;
    
-   /* Nejc Set up span functions based on format, for color */
-   fxSetSpanFunctions(rb, &ctx->Visual);
+   /* Span functions will be set up later in framebuffer creation */
    
    return rb;
 }
@@ -210,9 +209,7 @@ fxNewDepthRenderbuffer(GLcontext *ctx, GLuint name)
    rb->AllocStorage = fxAllocDepthRenderbuffer;
    rb->Delete = fxDeleteRenderbuffer;
    
-   /* Nejc Set up span functions based on format, for depth */
-   /* Set up span functions based on format */
-   fxSetSpanFunctions(rb, &ctx->Visual);
+   /* Span functions will be set up later in framebuffer creation */
    
    return rb;
 }
@@ -238,9 +235,7 @@ fxNewStencilRenderbuffer(GLcontext *ctx, GLuint name)
    rb->AllocStorage = fxAllocStencilRenderbuffer;
    rb->Delete = fxDeleteRenderbuffer;
    
-   /* Nejc Set up span functions based on format, for stencil */ 
-   /* Set up span functions based on format */
-   fxSetSpanFunctions(rb, &ctx->Visual);
+   /* Span functions will be set up later in framebuffer creation */
    
    return rb;
 }
