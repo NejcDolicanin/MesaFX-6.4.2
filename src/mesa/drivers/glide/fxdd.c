@@ -1673,21 +1673,7 @@ fxDDInitFxMesaContext(fxMesaContext fxMesa)
 {
    GLcontext *ctx = fxMesa->glCtx;
 
-   //Debug
-   FILE *debug_log = fopen("Mesa.log", "a");
-   if (debug_log) {
-      fprintf(debug_log, "fxDDInitFxMesaContext: Starting initialization\n");
-      fclose(debug_log);
-   }
-
    FX_setupGrVertexLayout();
-
-   //Debug
-   debug_log = fopen("Mesa.log", "a");
-   if (debug_log) {
-      fprintf(debug_log, "fxDDInitFxMesaContext: FX_setupGrVertexLayout completed\n");
-      fclose(debug_log);
-   }
 
    fxMesa->color = 0xffffffff;
    fxMesa->clearC = 0;
@@ -1958,6 +1944,7 @@ fx_check_IsInHardware(GLcontext * ctx)
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
 
    if (ctx->RenderMode != GL_RENDER) {
+      fprintf(stderr, "fx_check_IsInHardware: RENDER_MODE fallback\n");
       return FX_FALLBACK_RENDER_MODE;
    }
 

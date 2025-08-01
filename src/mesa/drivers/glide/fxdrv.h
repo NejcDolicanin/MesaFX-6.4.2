@@ -732,6 +732,7 @@ void fxSetupStencilFace (GLcontext *ctx, GLint face);
 #define FX_FALLBACK_COLORMASK		0x0100
 #define FX_FALLBACK_BLEND		0x0200
 #define FX_FALLBACK_TEXTURE_MULTI	0x0400
+#define FX_FALLBACK_BITMAP		0x0800
 
 extern GLuint fx_check_IsInHardware(GLcontext *ctx);
 
