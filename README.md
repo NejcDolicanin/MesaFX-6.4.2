@@ -9,9 +9,9 @@ Mesa3d for 3dfx
 - MinGw
 
 ## Build instructions
-make -f Makefile.mgw clean
-make -f Makefile.mgw FX=1
-make -f Makefile.mgw X86=1 FX=1
+make -f Makefile.mgw clean \
+make -f Makefile.mgw FX=1 \
+make -f Makefile.mgw X86=1 FX=1 \
 
 ## Readme.3dfx
 Legacy Readme.3dfx, in the project, with more informations.
