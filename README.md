@@ -2,7 +2,6 @@
 
 Mesa3d for 3dfx
 
-Changes ported from DRI tdfx driver (*ish).
 
 ## Tools needed to build:
 (what I used)
@@ -10,9 +9,9 @@ Changes ported from DRI tdfx driver (*ish).
 - MinGw
 
 ## Build instructions
-make -f Makefile.mgw clean 		(clean)
-make -f Makefile.mgw FX=1		(Driver)
-make -f Makefile.mgw X86=1 FX=1 (Driver with mmx,3dnow,sse... optimizations)
+make -f Makefile.mgw clean
+make -f Makefile.mgw FX=1
+make -f Makefile.mgw X86=1 FX=1
 
 ## Readme.3dfx
-Legacy readme, in the project, with more informations.
+Legacy Readme.3dfx, in the project, with more informations.
