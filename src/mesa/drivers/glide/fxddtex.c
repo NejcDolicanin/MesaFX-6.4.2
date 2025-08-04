@@ -1094,7 +1094,7 @@ fxDDChooseTextureFormat( GLcontext *ctx, GLint internalFormat,
    case GL_COLOR_INDEX12_EXT:
    case GL_COLOR_INDEX16_EXT:
      /* Nejc Mesa6.3+ change, for 8bit paletted you need to pass argb8888 to mesa*/
-      return &_mesa_texformat_argb8888; //OLD &_mesa_texformat_ci8
+      return &_mesa_texformat_argb8888; /* OLD &_mesa_texformat_ci8 */
    case 2:
    case GL_LUMINANCE_ALPHA:
    case GL_LUMINANCE4_ALPHA4:
@@ -1405,14 +1405,16 @@ fxDDTexImage2D(GLcontext * ctx, GLenum target, GLint level,
       return;
    }
 
-   // Set up tdfx_color_texenv from the shared texture palette if available
-   // if (ctx->Texture.SharedPalette) {
-   //    const GLuint *palette = (const GLuint *) ctx->Texture.Palette.Table;
-   //    if (palette) {
-   //       fxMesa->TexPaletteEnabled = GL_TRUE;
-   //       memcpy(fxMesa->TexPalette, palette, 256 * sizeof(GLuint));
-   //    }
-   // }
+   /* Set up tdfx_color_texenv from the shared texture palette if available */
+   /*
+   if (ctx->Texture.SharedPalette) {
+      const GLuint *palette = (const GLuint *) ctx->Texture.Palette.Table;
+      if (palette) {
+         fxMesa->TexPaletteEnabled = GL_TRUE;
+         memcpy(fxMesa->TexPalette, palette, 256 * sizeof(GLuint));
+      }
+   }
+*/
 
    if (!texObj->DriverData) {
       texObj->DriverData = fxAllocTexObjData(fxMesa);
@@ -1492,13 +1494,6 @@ fxDDTexImage2D(GLcontext * ctx, GLenum target, GLint level,
                        internalFormat == GL_COLOR_INDEX12_EXT ||
                        internalFormat == GL_COLOR_INDEX16_EXT) &&
                       texImage->TexFormat == &_mesa_texformat_argb8888);
-
-   if (isCI8) {
-      fprintf(stderr, "fxDDTexImage2D: Detected CI8 texture, will convert to RGBA8888\n");
-      fprintf(stderr, "  format=0x%x, type=0x%x, internalFormat=0x%x\n", format, type, internalFormat);
-      fprintf(stderr, "  texImage->TexFormat=%p, _mesa_texformat_argb8888=%p\n", 
-              texImage->TexFormat, &_mesa_texformat_argb8888);
-   }
 
    mml->glideFormat = fxGlideFormat(texImage->TexFormat->MesaFormat);
 

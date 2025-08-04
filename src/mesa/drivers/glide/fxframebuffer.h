@@ -47,6 +47,12 @@ fxUpdateFramebufferSize(GLcontext *ctx);
 extern void
 fxInitFramebufferFuncs(struct dd_function_table *functions);
 
+extern void
+fxSetReadBuffer(GLcontext *ctx, GLenum buffer);
+
+extern void
+fxSetDrawBuffer(GLcontext *ctx, GLenum buffer);
+
 #endif /* FX */
 
 #endif /* FXFRAMEBUFFER_H */

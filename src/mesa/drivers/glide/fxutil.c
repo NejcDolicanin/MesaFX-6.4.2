@@ -16,7 +16,7 @@ int is_win9x() {
     if (GetVersionEx(&verInfo)) {
         return (verInfo.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS) ? 1 : 0;
     }
-    return 0; // Default: assume NT-based (Win2000/XP+)
+    return 0; /* Default: assume NT-based (Win2000/XP+) */
 }
 
 /* Reads an environment variable first, then checks registry */
@@ -49,7 +49,8 @@ char *fxGetRegistryOrEnvironmentString(const char *name) {
     }
 
     /* Try alternate device/display keys */
-    for (int i = 1; i < 10; i++) {
+    int i; /* C89 compatible*/
+    for (i = 1; i < 10; i++) {
         if (is_win9x()) {
             sprintf(regPath, "System\\CurrentControlSet\\Services\\Class\\Display\\%04d\\GLIDE", i);
         } else {

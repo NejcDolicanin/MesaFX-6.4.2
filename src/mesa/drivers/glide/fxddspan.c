@@ -59,19 +59,6 @@
     GLuint p;								\
     (void) buf; (void) p;
 
-#define CLIPPIXEL( _x, _y )	( _x >= minx && _x < maxx &&		\
-				  _y >= miny && _y < maxy )
-
-#define CLIPSPAN( _x, _y, _n, _x1, _n1, _i )				\
-    if ( _y < miny || _y >= maxy ) {					\
-	_n1 = 0, _x1 = x;						\
-    } else {								\
-	_n1 = _n;							\
-	_x1 = _x;							\
-	if ( _x1 < minx ) _i += (minx-_x1), n1 -= (minx-_x1), _x1 = minx;\
-	if ( _x1 + _n1 >= maxx ) n1 -= (_x1 + n1 - maxx);		\
-    }
-
 #define Y_FLIP(_y)		(height - _y - 1)
 
 #define HW_WRITE_LOCK()							\
@@ -565,42 +552,6 @@ fxReadStencilPixels(GLcontext* ctx, struct gl_renderbuffer* rb, GLuint n,
 }
 
 
-
-/* Nejc: Old buffer access function - commented out for Mesa 6.3+ renderbuffer infrastructure */
-/*
- * This function is called to specify which buffer to read and write
- * for software rasterization (swrast) fallbacks.  This doesn't necessarily
- * correspond to glDrawBuffer() or glReadBuffer() calls.
- * 
- * NOTE: This function is obsolete in Mesa 6.3+ and replaced by:
- * - fxSetReadBuffer() and fxSetDrawBuffer() in fxframebuffer.c
- * - Individual renderbuffer GetRow/PutRow functions
- */
-/*
-static void
-fxDDSetBuffer(GLcontext* ctx, GLframebuffer* buffer, GLuint bufferBit)
-{
-	fxMesaContext fxMesa = FX_CONTEXT(ctx);
-	(void)buffer;
-
-	if (TDFX_DEBUG & VERBOSE_DRIVER) {
-		fprintf(stderr, "fxDDSetBuffer(%x)\n", (int)bufferBit);
-	}
-
-	if (bufferBit == BUFFER_BIT_FRONT_LEFT) {
-		fxMesa->currentFB = GR_BUFFER_FRONTBUFFER;
-		grRenderBuffer(fxMesa->currentFB);
-	}
-	else if (bufferBit == BUFFER_BIT_BACK_LEFT) {
-		fxMesa->currentFB = GR_BUFFER_BACKBUFFER;
-		grRenderBuffer(fxMesa->currentFB);
-	}
-}
-*/
-
-
-/************************************************************************/
-
 #define FLUSH_BATCH( fxMesa )
 #define LOCK_HARDWARE( fxMesa )
 #define UNLOCK_HARDWARE( fxMesa )
@@ -618,6 +569,24 @@ void fxSpanRenderFinish(GLcontext* ctx)
 	fxMesaContext fxMesa = FX_CONTEXT(ctx);
 	_swrast_flush(ctx);
 	UNLOCK_HARDWARE(fxMesa);
+}
+
+/* Set the buffer used for reading */
+static void fxDDSetBuffer(GLcontext *ctx, GLframebuffer *buffer, GLuint bufferBit)
+{
+	fxMesaContext fxMesa = FX_CONTEXT(ctx);
+	(void) buffer;
+
+	switch (bufferBit) {
+	case BUFFER_BIT_FRONT_LEFT:
+		fxMesa->currentFB = GR_BUFFER_FRONTBUFFER;
+		break;
+	case BUFFER_BIT_BACK_LEFT:
+		fxMesa->currentFB = GR_BUFFER_BACKBUFFER;
+		break;
+	default:
+		break;
+	}
 }
 
 /* Nejc: Old span function setup - commented out for Mesa 6.3+ renderbuffer infrastructure */
@@ -641,6 +610,7 @@ void fxDDInitSpanFuncs(GLcontext* ctx)
 	
 	/* Keep the render start/finish functions for hardware locking */
 	struct swrast_device_driver* swdd = _swrast_GetDeviceDriverReference(ctx);
+	swdd->SetBuffer = fxDDSetBuffer; /* Use the proper SetBuffer function */
 	swdd->SpanRenderStart = fxSpanRenderStart; /* BEGIN_BOARD_LOCK */
 	swdd->SpanRenderFinish = fxSpanRenderFinish; /* END_BOARD_LOCK */
 }

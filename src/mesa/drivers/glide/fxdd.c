@@ -96,6 +96,8 @@ static void fxDisableColor (fxMesaContext fxMesa)
     fxMesa->Glide.grColorMaskExt(FXFALSE, FXFALSE, FXFALSE, FXFALSE);
  } else {
     /* 15/16 bpp mode */
+    /*Nejc test*/
+    /*fxMesa->Glide.grColorMaskExt(FXFALSE, FXFALSE, FXFALSE, FXFALSE);*/
     grColorMask(FXFALSE, FXFALSE);
  }
 }
@@ -2107,6 +2109,38 @@ fxDDUpdateDDPointers(GLcontext * ctx, GLuint new_state)
 
 
 
+/**
+ * Set up essential driver functions BEFORE context creation
+ * This is called from fxapi.c before _mesa_create_context()
+ */
+void
+fxSetupDDPointers_PreContext(struct dd_function_table *functions, fxMesaContext fxMesa)
+{
+   if (TDFX_DEBUG & VERBOSE_DRIVER) {
+      fprintf(stderr, "fxSetupDDPointers_PreContext()\n");
+   }
+
+   /* Set up essential framebuffer/renderbuffer functions that Mesa needs during context creation */
+   fxInitFramebufferFuncs(functions);
+   
+   /* Set up other essential functions that might be needed during context creation */
+   functions->GetString = fxDDGetString;
+   functions->UpdateState = fxDDUpdateDDPointers;
+   
+   /* Set up essential span functions that Mesa 6.3+ needs during context creation */
+   /* Note: We can't call fxSetupDDSpanPointers() here because it needs a GLcontext,
+    * but we can set up the basic span infrastructure that Mesa needs */
+   functions->GetBufferSize = fxDDGetBufferSize;
+   functions->Viewport = fxDDViewport;
+   
+   /* Set up essential texture functions that Mesa needs during context creation */
+   /* Mesa calls NewTextureObject during _mesa_init_texture() to create default textures */
+   functions->NewTextureObject = fxDDNewTextureObject;
+   functions->DeleteTexture = fxDDTexDel;
+   functions->ChooseTextureFormat = fxDDChooseTextureFormat;
+   functions->FreeTexImageData = _mesa_free_texmemory;
+}
+
 void
 fxSetupDDPointers(GLcontext * ctx)
 {
@@ -2145,6 +2179,7 @@ fxSetupDDPointers(GLcontext * ctx)
    ctx->Driver.Finish = fxDDFinish;
    ctx->Driver.Flush = NULL;
    ctx->Driver.ChooseTextureFormat = fxDDChooseTextureFormat;
+   ctx->Driver.NewTextureObject = fxDDNewTextureObject;
    ctx->Driver.TexImage1D = fxDDTexImage1D;
    ctx->Driver.TexImage2D = fxDDTexImage2D;
    ctx->Driver.TexSubImage1D = fxDDTexSubImage1D;
@@ -2176,7 +2211,7 @@ fxSetupDDPointers(GLcontext * ctx)
       ctx->Driver.StencilOp	= fxDDStencilOp;
    }
 
-   fxSetupDDSpanPointers(ctx);
+   /* fxSetupDDSpanPointers(ctx); */
    
    /* Nejc: Initialize framebuffer functions for Mesa 6.3+ */
    fxInitFramebufferFuncs(&ctx->Driver);

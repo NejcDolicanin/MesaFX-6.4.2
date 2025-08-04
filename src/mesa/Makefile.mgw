@@ -58,6 +58,9 @@
 .SUFFIXES: .rc .res
 
 # Set this to the prefix of your build tools, i.e. mingw32-
+# MinGW4.7
+#TOOLS_PREFIX = 
+# Newer MinGW
 TOOLS_PREFIX = mingw32-
 
 TOP = ../..

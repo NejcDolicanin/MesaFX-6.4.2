@@ -42,23 +42,24 @@
 #if defined(FX)
 #include "fxdrv.h"
 #include "fxutil.h"
+#include "fxframebuffer.h"
 
 #include "drivers/common/driverfuncs.h"
 #include "framebuffer.h"
 
 #ifndef TDFX_DEBUG
 int TDFX_DEBUG = (0
-/*		  | VERBOSE_VARRAY */
-/*		  | VERBOSE_TEXTURE */
-/*		  | VERBOSE_IMMEDIATE */
-/*		  | VERBOSE_PIPELINE */
-/*		  | VERBOSE_DRIVER */
-/*		  | VERBOSE_STATE */
-/*		  | VERBOSE_API */
-/*		  | VERBOSE_DISPLAY_LIST */
-/*		  | VERBOSE_LIGHTING */
-/*		  | VERBOSE_PRIMS */
-/*		  | VERBOSE_VERTS */
+/*		  | VERBOSE_VARRAY      */    /* fxtris.c */
+/*		  | VERBOSE_TEXTURE     */    /* Textures, fxddtex.c, fxtexman.c*/
+/*		  | VERBOSE_IMMEDIATE   */    /**/
+/*		  | VERBOSE_PIPELINE    */    /* fxtris.c */
+		  | VERBOSE_DRIVER          /* Daddy */
+/*		  | VERBOSE_STATE       */    /*Mesa verbose*/
+/*		  | VERBOSE_API         */    /* Mesa */
+/*		  | VERBOSE_DISPLAY_LIST*/    /**/
+/*		  | VERBOSE_LIGHTING */       /**/
+/*		  | VERBOSE_PRIMS */          /**/
+/*		  | VERBOSE_VERTS */          /**/
    );
 #endif
 
@@ -331,6 +332,10 @@ fxMesaCreateContext(GLuint win,
  colDepth = 16;
  depthSize = alphaSize = stencilSize = accumSize = 0;
 
+ if (TDFX_DEBUG & VERBOSE_DRIVER) {
+    fprintf(stderr, "Processing user flags...\n");
+ }
+
  i = 0;
  while (attribList[i] != FXMESA_NONE) {
        switch (attribList[i]) {
@@ -367,19 +372,35 @@ fxMesaCreateContext(GLuint win,
        i++;
  }
 
+ if (TDFX_DEBUG & VERBOSE_DRIVER) {
+    fprintf(stderr, "About to query hardware...\n");
+ }
+
  if (!fxQueryHardware()) {
     str = "no Voodoo hardware!";
     goto errorhandler;
+ }
+
+ if (TDFX_DEBUG & VERBOSE_DRIVER) {
+    fprintf(stderr, "Hardware query successful, selecting board...\n");
  }
 
  grSstSelect(glbCurrentBoard);
  /*grEnable(GR_OPENGL_MODE_EXT);*/ /* [koolsmoky] */
  voodoo = &glbHWConfig.SSTs[glbCurrentBoard];
 
+ if (TDFX_DEBUG & VERBOSE_DRIVER) {
+    fprintf(stderr, "About to allocate fxMesa context...\n");
+ }
+
  fxMesa = (fxMesaContext)CALLOC_STRUCT(tfxMesaContext);
  if (!fxMesa) {
     str = "private context";
     goto errorhandler;
+ }
+
+ if (TDFX_DEBUG & VERBOSE_DRIVER) {
+    fprintf(stderr, "fxMesa context allocated successfully\n");
  }
 
  if (getenv("MESA_FX_INFO")) {
@@ -398,16 +419,6 @@ fxMesaCreateContext(GLuint win,
  fxMesa->HaveTexus2 = Glide->txImgQuantize &&
                       Glide->txMipQuantize &&
                       Glide->txPalToNcc && !getenv("MESA_FX_IGNORE_TEXUS2");
-
-// Debug
-// const char *force16bpp_setting = NULL;
-// FILE *debug_log = fopen("Mesa.log", "a");
-// if (debug_log) {
-//    force16bpp_setting = fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_TEXTURES");
-//    fprintf(debug_log, "=== Debugging FX_MESA_FORCE_16BPP_TEXTURES ===\n");
-//    fprintf(debug_log, "Value: %s\n", force16bpp_setting ? force16bpp_setting : "(null)");
-//    fclose(debug_log);
-// }
 
  /* Nejc 16bit Textures override from 3dfx tools */
  if (fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_TEXTURES") != NULL ) {
@@ -675,6 +686,10 @@ fxMesaCreateContext(GLuint win,
           grGetString(GR_HARDWARE),
           ((fxMesa->type < GR_SSTTYPE_Voodoo4) && (voodoo->numChips > 1)) ? " SLI" : "");
 
+   if (TDFX_DEBUG & VERBOSE_DRIVER) {
+      fprintf(stderr, "About to create visual...\n");
+   }
+
    fxMesa->glVis = _mesa_create_visual(GL_TRUE,		/* RGB mode */
 				       doubleBuffer,
 				       GL_FALSE,	/* stereo */
@@ -695,39 +710,69 @@ fxMesaCreateContext(GLuint win,
       goto errorhandler;
    }
 
+   if (TDFX_DEBUG & VERBOSE_DRIVER) {
+      fprintf(stderr, "Visual created successfully, about to init driver functions...\n");
+   }
+
    _mesa_init_driver_functions(&functions);
+   
+   /* Set up FX-specific driver functions BEFORE creating context */
+   fxSetupDDPointers_PreContext(&functions, fxMesa);
+
+   if (TDFX_DEBUG & VERBOSE_DRIVER) {
+      fprintf(stderr, "Driver functions initialized, about to create context...\n");
+      fprintf(stderr, "Visual: RGB=%d, DB=%d, Stereo=%d\n", 
+              fxMesa->glVis->rgbMode, fxMesa->glVis->doubleBufferMode, fxMesa->glVis->stereoMode);
+      fprintf(stderr, "Visual: R=%d, G=%d, B=%d, A=%d, Depth=%d, Stencil=%d\n",
+              fxMesa->glVis->redBits, fxMesa->glVis->greenBits, fxMesa->glVis->blueBits,
+              fxMesa->glVis->alphaBits, fxMesa->glVis->depthBits, fxMesa->glVis->stencilBits);
+   }
+
    ctx = fxMesa->glCtx = _mesa_create_context(fxMesa->glVis, shareCtx,
 					      &functions, (void *) fxMesa);
    if (!ctx) {
+      if (TDFX_DEBUG & VERBOSE_DRIVER) {
+         fprintf(stderr, "ERROR: _mesa_create_context failed!\n");
+         fprintf(stderr, "Visual pointer: %p\n", (void*)fxMesa->glVis);
+         fprintf(stderr, "ShareCtx pointer: %p\n", (void*)shareCtx);
+         fprintf(stderr, "Functions pointer: %p\n", (void*)&functions);
+         fprintf(stderr, "Driver data pointer: %p\n", (void*)fxMesa);
+      }
       str = "_mesa_create_context";
       goto errorhandler;
    }
 
+   if (TDFX_DEBUG & VERBOSE_DRIVER) {
+      fprintf(stderr, "Mesa context created successfully\n");
+   }
+
+
+   if (TDFX_DEBUG & VERBOSE_DRIVER) {
+      fprintf(stderr, "About to call fxDDInitFxMesaContext...\n");
+   }
 
    if (!fxDDInitFxMesaContext(fxMesa)) {
       str = "fxDDInitFxMesaContext";
       goto errorhandler;
    }
 
+   if (TDFX_DEBUG & VERBOSE_DRIVER) {
+      fprintf(stderr, "fxDDInitFxMesaContext completed successfully\n");
+      fprintf(stderr, "About to call fxNewFramebuffer...\n");
+   }
 
    /* Nejc: Use new framebuffer infrastructure with renderbuffers */
    fxMesa->glBuffer = fxNewFramebuffer(ctx, fxMesa->glVis);
-// OLD   fxMesa->glBuffer = _mesa_create_framebuffer(fxMesa->glVis);
-//#if 0
-/* XXX this is a complete mess :(
- *	_mesa_add_soft_renderbuffers
- *	driNewRenderbuffer
- */
-//					       GL_FALSE,	/* no software depth */
-//					       stencilSize && !fxMesa->haveHwStencil,
-//					       fxMesa->glVis->accumRedBits > 0,
-//					       alphaSize && !fxMesa->haveHwAlpha);
-//#endif
+/* OLD   fxMesa->glBuffer = _mesa_create_framebuffer(fxMesa->glVis);*/
 
    if (!fxMesa->glBuffer) {
-      // OLD str = "_mesa_create_framebuffer";
+      /* OLD str = "_mesa_create_framebuffer"; */
       str = "fxNewFramebuffer";
       goto errorhandler;
+   }
+
+   if (TDFX_DEBUG & VERBOSE_DRIVER) {
+      fprintf(stderr, "fxNewFramebuffer completed successfully\n");
    }
 
    glbTotNumCtx++;
