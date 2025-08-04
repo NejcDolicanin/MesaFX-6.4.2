@@ -12,6 +12,12 @@ extern "C" {
  */
 char *fxGetRegistryOrEnvironmentString(const char *name);
 
+/* 
+ * Reads optimal refresh rate from the registry.
+ * Set through the environment variable HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Class\Display\0000\DEFAULT\RefreshRate  
+ */
+int ReadRefreshFromRegistry(void);
+
 #ifdef __cplusplus
 }
 #endif

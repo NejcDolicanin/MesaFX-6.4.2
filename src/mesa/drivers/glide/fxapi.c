@@ -287,13 +287,40 @@ fxMesaContext GLAPIENTRY
 fxMesaCreateBestContext(GLuint win, GLint width, GLint height,
 			const GLint attribList[])
 {
+   /* Get best Resolution */
  int res = fxBestResolution(width, height);
 
  if (res == -1) {
     return NULL;
  }
 
- return fxMesaCreateContext(win, res, GR_REFRESH_60Hz, attribList);
+ /* Nejc */
+ /* Get best Refresh rate*/
+ GrScreenRefresh_t refresh = GR_REFRESH_60Hz;  /* Default refresh */
+ int refreshFromReg = ReadRefreshFromRegistry();  /* Or env variable */
+
+ // Convert to GrScreenRefresh_t
+ if (refreshFromReg > 0) {
+        switch (refreshFromReg) {
+            case 60:  refresh = GR_REFRESH_60Hz; break;
+            case 70:  refresh = GR_REFRESH_70Hz; break;
+            case 72:  refresh = GR_REFRESH_72Hz; break;
+            case 75:  refresh = GR_REFRESH_75Hz; break;
+            case 80:  refresh = GR_REFRESH_80Hz; break;
+            case 85:  refresh = GR_REFRESH_85Hz; break;
+            case 90:  refresh = GR_REFRESH_90Hz; break;
+            case 100: refresh = GR_REFRESH_100Hz; break;
+            case 120: refresh = GR_REFRESH_120Hz; break;
+            case 144: refresh = GR_REFRESH_144Hz; break;
+            default:
+                /* Unknown refresh, ignore override */
+                break;
+        }
+    }
+
+
+ return fxMesaCreateContext(win, res, refresh, attribList);
+ /* return fxMesaCreateContext(win, res, GR_REFRESH_60Hz, attribList); */
 }
 
 
