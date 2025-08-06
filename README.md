@@ -6,7 +6,7 @@ Mesa3d for 3dfx
 ## Tools needed to build:
 (what I used)
 - Win10
-- MinGw
+- MinGw v6.3.0 (4.7 wont work)
 
 ## Build instructions
 make -f Makefile.mgw clean \
