@@ -725,7 +725,7 @@ fxTMMoveOutTM(fxMesaContext fxMesa, struct gl_texture_object *tObj)
    if (TDFX_DEBUG & VERBOSE_DRIVER) {
       fprintf(stderr, "fxTMMoveOutTM(%p (%d))\n", (void *)tObj, tObj->Name);
    }
-
+            
    if (!ti->isInTM)
       return;
 

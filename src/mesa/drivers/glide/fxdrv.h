@@ -804,7 +804,7 @@ fxInitFramebufferFuncs(struct dd_function_table *functions);
 
 /* run-time debugging */
 #ifndef FX_DEBUG
-#define FX_DEBUG 1
+#define FX_DEBUG 0
 #endif
 #if FX_DEBUG
 extern int TDFX_DEBUG;

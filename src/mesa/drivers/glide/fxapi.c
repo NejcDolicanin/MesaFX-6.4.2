@@ -51,7 +51,7 @@
 int TDFX_DEBUG = (0
 /*		  | VERBOSE_VARRAY      */    /* fxtris.c */
 /*		  | VERBOSE_TEXTURE     */    /* Textures, fxddtex.c, fxtexman.c*/
-/*		  | VERBOSE_IMMEDIATE   */    /**/
+/*		  | VERBOSE_IMMEDIATE   */    /*Used for fxFramebuffer debug*/
 /*		  | VERBOSE_PIPELINE    */    /* fxtris.c */
 /*		  | VERBOSE_DRIVER      */       /* Daddy */
 /*		  | VERBOSE_STATE       */    /*Mesa verbose*/
@@ -59,7 +59,7 @@ int TDFX_DEBUG = (0
 /*		  | VERBOSE_DISPLAY_LIST*/    /**/
 /*		  | VERBOSE_LIGHTING */       /**/
 /*		  | VERBOSE_PRIMS */          /**/
-/*		  | VERBOSE_VERTS */          /**/
+/*		  | VERBOSE_VERTS */          /*TMU Oni*/
    );
 #endif
 

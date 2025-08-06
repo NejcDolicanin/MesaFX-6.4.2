@@ -76,13 +76,13 @@ fxNewFramebuffer(GLcontext *ctx, const GLvisual *visual)
    }
 
    /* Create front color renderbuffer */
-   if (TDFX_DEBUG) {
+   if (TDFX_DEBUG && VERBOSE_IMMEDIATE) {
       fprintf(stderr, "Creating front color renderbuffer (format=%s)\n", 
               _mesa_lookup_enum_by_nr(colorFormat));
    }
    frontRb = fxNewColorRenderbuffer(ctx, 0, colorFormat);
    if (!frontRb) {
-      if (TDFX_DEBUG) {
+      if (TDFX_DEBUG && VERBOSE_IMMEDIATE) {
          fprintf(stderr, "ERROR: Failed to create front color renderbuffer\n");
       }
       _mesa_destroy_framebuffer(fb);
@@ -91,19 +91,19 @@ fxNewFramebuffer(GLcontext *ctx, const GLvisual *visual)
    _mesa_add_renderbuffer(fb, BUFFER_FRONT_LEFT, frontRb);
    /* Set up span functions for front color buffer - Call #1 */
    fxSetSpanFunctions(frontRb, visual);
-   if (TDFX_DEBUG) {
+   if (TDFX_DEBUG && VERBOSE_IMMEDIATE) {
       fprintf(stderr, "Front color renderbuffer created successfully\n");
    }
 
    /* Create back color renderbuffer if double buffered */
    if (visual->doubleBufferMode) {
-      if (TDFX_DEBUG) {
+      if (TDFX_DEBUG && VERBOSE_IMMEDIATE) {
          fprintf(stderr, "Creating back color renderbuffer (format=%s)\n", 
                  _mesa_lookup_enum_by_nr(colorFormat));
       }
       backRb = fxNewColorRenderbuffer(ctx, 0, colorFormat);
       if (!backRb) {
-         if (TDFX_DEBUG) {
+         if (TDFX_DEBUG && VERBOSE_IMMEDIATE) {
             fprintf(stderr, "ERROR: Failed to create back color renderbuffer\n");
          }
          _mesa_destroy_framebuffer(fb);
@@ -112,24 +112,24 @@ fxNewFramebuffer(GLcontext *ctx, const GLvisual *visual)
       _mesa_add_renderbuffer(fb, BUFFER_BACK_LEFT, backRb);
       /* Set up span functions for back color buffer - Call #2 */
       fxSetSpanFunctions(backRb, visual);
-      if (TDFX_DEBUG) {
+      if (TDFX_DEBUG && VERBOSE_IMMEDIATE) {
          fprintf(stderr, "Back color renderbuffer created successfully\n");
       }
    } else {
-      if (TDFX_DEBUG) {
+      if (TDFX_DEBUG && VERBOSE_IMMEDIATE) {
          fprintf(stderr, "Skipping back color renderbuffer (single buffered)\n");
       }
    }
 
    /* Create depth renderbuffer if needed */
    if (visual->depthBits > 0) {
-      if (TDFX_DEBUG) {
+      if (TDFX_DEBUG && VERBOSE_IMMEDIATE) {
          fprintf(stderr, "Creating depth renderbuffer (%d bits, haveHwStencil=%s)\n", 
                  visual->depthBits, fxMesa->haveHwStencil ? "true" : "false");
       }
       depthRb = fxNewDepthRenderbuffer(ctx, 0);
       if (!depthRb) {
-         if (TDFX_DEBUG) {
+         if (TDFX_DEBUG && VERBOSE_IMMEDIATE) {
             fprintf(stderr, "ERROR: Failed to create depth renderbuffer\n");
          }
          _mesa_destroy_framebuffer(fb);
@@ -138,11 +138,11 @@ fxNewFramebuffer(GLcontext *ctx, const GLvisual *visual)
       _mesa_add_renderbuffer(fb, BUFFER_DEPTH, depthRb);
       /* Set up span functions for depth buffer - Call #3 */
       fxSetSpanFunctions(depthRb, visual);
-      if (TDFX_DEBUG) {
+      if (TDFX_DEBUG && VERBOSE_IMMEDIATE) {
          fprintf(stderr, "Depth renderbuffer created successfully\n");
       }
    } else {
-      if (TDFX_DEBUG) {
+      if (TDFX_DEBUG && VERBOSE_IMMEDIATE) {
          fprintf(stderr, "Skipping depth renderbuffer (no depth bits requested)\n");
       }
    }
@@ -152,13 +152,13 @@ fxNewFramebuffer(GLcontext *ctx, const GLvisual *visual)
    if (visual->stencilBits > 0) {
       if (fxMesa->haveHwStencil) {
          /* Hardware stencil */
-         if (TDFX_DEBUG) {
+         if (TDFX_DEBUG && VERBOSE_IMMEDIATE) {
             fprintf(stderr, "Creating hardware stencil renderbuffer (%d bits)\n", 
                     visual->stencilBits);
          }
          stencilRb = fxNewStencilRenderbuffer(ctx, 0);
          if (!stencilRb) {
-            if (TDFX_DEBUG) {
+            if (TDFX_DEBUG && VERBOSE_IMMEDIATE) {
                fprintf(stderr, "ERROR: Failed to create hardware stencil renderbuffer\n");
             }
             _mesa_destroy_framebuffer(fb);
@@ -167,7 +167,7 @@ fxNewFramebuffer(GLcontext *ctx, const GLvisual *visual)
          _mesa_add_renderbuffer(fb, BUFFER_STENCIL, stencilRb);
          /* Set up span functions for stencil buffer - Call #4 */
          fxSetSpanFunctions(stencilRb, visual);
-         if (TDFX_DEBUG) {
+         if (TDFX_DEBUG && VERBOSE_IMMEDIATE) {
             fprintf(stderr, "Hardware stencil renderbuffer created successfully\n");
          }
          
@@ -175,14 +175,14 @@ fxNewFramebuffer(GLcontext *ctx, const GLvisual *visual)
          /* This matches the tdfx driver pattern where depth buffer span functions */
          /* are set up again when stencil is also present (shared Z/S buffer) */
          if (depthRb && visual->depthBits > 0) {
-            if (TDFX_DEBUG) {
+            if (TDFX_DEBUG && VERBOSE_IMMEDIATE) {
                fprintf(stderr, "Re-setting depth span functions for combined depth/stencil\n");
             }
             fxSetSpanFunctions(depthRb, visual);
          }
       } else {
          /* Software stencil - let Mesa handle it */
-         if (TDFX_DEBUG) {
+         if (TDFX_DEBUG && VERBOSE_IMMEDIATE) {
             fprintf(stderr, "Creating software stencil renderbuffer (%d bits)\n", 
                     visual->stencilBits);
          }
@@ -193,19 +193,19 @@ fxNewFramebuffer(GLcontext *ctx, const GLvisual *visual)
                                       GL_FALSE, /* accum */
                                       GL_FALSE, /* alpha */
                                       GL_FALSE  /* aux */);
-         if (TDFX_DEBUG) {
+         if (TDFX_DEBUG && VERBOSE_IMMEDIATE) {
             fprintf(stderr, "Software stencil renderbuffer created successfully\n");
          }
       }
    } else {
-      if (TDFX_DEBUG) {
+      if (TDFX_DEBUG && VERBOSE_IMMEDIATE) {
          fprintf(stderr, "Skipping stencil renderbuffer (no stencil bits requested)\n");
       }
    }
 
    /* Add software accumulation buffer if needed */
    if (visual->accumRedBits > 0) {
-      if (TDFX_DEBUG) {
+      if (TDFX_DEBUG && VERBOSE_IMMEDIATE) {
          fprintf(stderr, "Creating software accumulation buffer (%d bits)\n", 
                  visual->accumRedBits);
       }
@@ -216,18 +216,18 @@ fxNewFramebuffer(GLcontext *ctx, const GLvisual *visual)
                                    GL_TRUE,  /* accum */
                                    GL_FALSE, /* alpha */
                                    GL_FALSE  /* aux */);
-      if (TDFX_DEBUG) {
+      if (TDFX_DEBUG && VERBOSE_IMMEDIATE) {
          fprintf(stderr, "Software accumulation buffer created successfully\n");
       }
    } else {
-      if (TDFX_DEBUG) {
+      if (TDFX_DEBUG && VERBOSE_IMMEDIATE) {
          fprintf(stderr, "Skipping accumulation buffer (no accum bits requested)\n");
       }
    }
 
    /* Add software alpha buffer if needed and not provided by hardware */
    if (visual->alphaBits > 0 && !fxMesa->haveHwAlpha) {
-      if (TDFX_DEBUG) {
+      if (TDFX_DEBUG && VERBOSE_IMMEDIATE) {
          fprintf(stderr, "Creating software alpha buffer (%d bits, haveHwAlpha=%s)\n", 
                  visual->alphaBits, fxMesa->haveHwAlpha ? "true" : "false");
       }
@@ -238,11 +238,11 @@ fxNewFramebuffer(GLcontext *ctx, const GLvisual *visual)
                                    GL_FALSE, /* accum */
                                    GL_TRUE,  /* alpha */
                                    GL_FALSE  /* aux */);
-      if (TDFX_DEBUG) {
+      if (TDFX_DEBUG && VERBOSE_IMMEDIATE) {
          fprintf(stderr, "Software alpha buffer created successfully\n");
       }
    } else {
-      if (TDFX_DEBUG) {
+      if (TDFX_DEBUG && VERBOSE_IMMEDIATE) {
          if (visual->alphaBits > 0) {
             fprintf(stderr, "Skipping software alpha buffer (hardware alpha available)\n");
          } else {
