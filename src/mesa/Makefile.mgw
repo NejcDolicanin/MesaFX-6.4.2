@@ -58,8 +58,7 @@
 .SUFFIXES: .rc .res
 
 # Set this to the prefix of your build tools, i.e. mingw32-
-# MinGW4.7
-#TOOLS_PREFIX = 
+# TOOLS_PREFIX = 
 # Newer MinGW
 TOOLS_PREFIX = mingw32-
 
@@ -95,6 +94,15 @@ else
   endif
 endif
 
+# Nejc Add compatibility and safety flags for Windows 98 + XP
+CFLAGS += -m32 -march=i586 -mtune=i686 \
+          -mno-ms-bitfields \
+          -mstackrealign \
+          -fomit-frame-pointer \
+          -fno-asynchronous-unwind-tables \
+          -D_WIN32_WINNT=0x0400 -DWINVER=0x0400 \
+          -static-libgcc
+
 AR = ar
 ARFLAGS = crus
 
@@ -110,11 +118,16 @@ UNLINK = rm -f $(1)
 
 include sources
 
+#Nejc DISABLED sse, since it causes problems
 ifeq ($(X86),1)
 CFLAGS += -DUSE_X86_ASM
 CFLAGS += -DUSE_MMX_ASM
-CFLAGS += -DUSE_SSE_ASM
+#CFLAGS += -DUSE_SSE_ASM
 CFLAGS += -DUSE_3DNOW_ASM
+#Nejc To prevent accidental use of sse2 (-msse2)
+CFLAGS += -mmmx -m3dnow
+#CFLAGS += -msse -mmmx -m3dnow
+
 X86_SOURCES += $(X86_API)
 else
 X86_SOURCES =
@@ -161,20 +174,16 @@ $(LIBDIR):
 	mkdir -p $(LIBDIR)
 
 # Nejc
-#$(LIBDIR)/$(GL_DLL) $(LIBDIR)/$(GL_IMP): $(OBJECTS) $(RESOURCE)
-#	$(TOOLS_PREFIX)dllwrap -o $(LIBDIR)/$(GL_DLL) --output-lib $(LIBDIR)/$(GL_IMP) \
-#	                       --target i386-mingw32 --def $(GL_DEF) -Wl,-enable-stdcall-fixup \
-#	                       $^ $(LDLIBS)
-#
+#OLD
+#dllwrap -o $(LIBDIR)/$(GL_DLL) --output-lib $(LIBDIR)/$(GL_IMP) --target i386-mingw32 --def $(GL_DEF) $^ $(LDLIBS)
 
 $(LIBDIR)/$(GL_DLL) $(LIBDIR)/$(GL_IMP): $(OBJECTS) $(RESOURCE)
-	dllwrap -o $(LIBDIR)/$(GL_DLL) --output-lib $(LIBDIR)/$(GL_IMP) --target i386-mingw32 --def $(GL_DEF) $^ $(LDLIBS)
-
-
-# Nejc
-#drivers/glide/fx.o: drivers/glide/fx.rc
-#windres drivers/glide/fx.rc -o drivers/glide/fx.o
-
+	dllwrap -o $(LIBDIR)/$(GL_DLL) \
+        --output-lib $(LIBDIR)/$(GL_IMP) \
+        --target i386-mingw32 \
+        --def $(GL_DEF) \
+        -Wl,--enable-stdcall-fixup -Wl,--kill-at \
+        $^ $(LDLIBS)
 
 $(X86_OBJECTS): x86/matypes.h
 

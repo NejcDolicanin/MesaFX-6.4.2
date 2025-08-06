@@ -62,7 +62,35 @@ else
   # I love c89
   CFLAGS = -Wall -W -pedantic
 endif
-CFLAGS += -O2 -ffast-math
+# Nejc Safe optimization for Win98/XP, so mesa uses it
+#CFLAGS += -O2 -ffast-math
+CFLAGS += -O2 \
+          -ffast-math \
+          -m32 -march=i586 -mtune=i686 \
+          -mno-ms-bitfields \
+          -mstackrealign \
+          -fomit-frame-pointer \
+          -fno-asynchronous-unwind-tables \
+          -D_WIN32_WINNT=0x0400 -DWINVER=0x0400 \
+          -static-libgcc
+
+#Explanation
+#          -mno-ms-bitfields \
+#          -mstackrealign \
+#          -fno-omit-frame-pointer \
+#          -fno-strict-aliasing \
+#          -fno-tree-vectorize -fno-tree-slp-vectorize \
+#          -fno-asynchronous-unwind-tables \
+#          -D_WIN32_WINNT=0x0400 -DWINVER=0x0400 \
+#          -static-libgcc
+#-mno-ms-bitfields -> Ensures structure packing matches MSVC (important for Glide).
+#-fno-tree-vectorize and -fno-tree-slp-vectorize ->Disables automatic vectorization optimizations that could break on older CPUs or introduce crashes.
+#-mstackrealign -> Forces stack alignment for old OSes, adds minor overhead.
+#-fno-omit-frame-pointer -> Keeps frame pointers for debugging and stability, but adds overhead.
+#-fno-strict-aliasing -> Prevents aggressive alias optimizations, safer but slower.
+#-fno-tree-vectorize -> Prevents auto-vectorization that might emit SSE2 instructions (Win98 may not handle).
+#-fno-asynchronous-unwind-tables -> Avoids DWARF unwinding tables (saves size and avoids some incompatibility).
+#-static-libgcc -> so it doesn’t depend on a newer libgcc DLL.
 
 export CFLAGS
 
