@@ -46,6 +46,8 @@
 #include "texcompress.h"
 #include "texobj.h"
 #include "texstore.h"
+/*Nejc Test for fxTexValidate SOF*/
+/* #include "fxsetup.h" */
 
 
 /* no borders! can't halve 1x1! (stride > width * comp) not allowed */
@@ -1595,6 +1597,18 @@ fxDDTexImage2D(GLcontext * ctx, GLenum target, GLint level,
    texImage->FetchTexelc = fxFetchFunction(texImage->TexFormat->MesaFormat);
 
    fxTexInvalidate(ctx, texObj);
+
+   
+   /* Nejc Debug for SOF
+   // After fxTexInvalidate(ctx, texObj);
+   fxTexValidate(fxMesa, texObj);
+   // Force upload now instead of deferring
+   // Force immediate upload to Glide hardware
+   fxTMMoveInTM(FX_CONTEXT(ctx), texObj, FX_TMU_BOTH );// or specific TMU
+
+   fprintf(stderr, "[MesaFX] Forced upload: obj=%d level=%d format=%d\n",
+        texObj->Name, level, mml->glideFormat);
+        */
 }
 
 void

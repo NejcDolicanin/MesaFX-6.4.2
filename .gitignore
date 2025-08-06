@@ -1,3 +1,6 @@
+#Exclude glide3 lib from ignore
+!3dfx/glide3/lib/*
+
 # Prerequisites
 *.d
 

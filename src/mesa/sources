@@ -149,8 +149,6 @@ TNL_SOURCES = \
 	tnl/t_vtx_eval.c \
 	tnl/t_vtx_exec.c 
 
-
-
 SHADER_SOURCES = \
 	shader/arbfragparse.c \
 	shader/arbprogparse.c \

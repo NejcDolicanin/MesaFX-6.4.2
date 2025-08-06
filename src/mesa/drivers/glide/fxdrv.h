@@ -809,7 +809,7 @@ fxInitFramebufferFuncs(struct dd_function_table *functions);
 #if FX_DEBUG
 extern int TDFX_DEBUG;
 #else
-#define TDFX_DEBUG		1
+#define TDFX_DEBUG		0
 #endif
 
 /* dirty hacks */
