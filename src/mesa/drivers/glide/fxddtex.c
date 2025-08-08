@@ -567,13 +567,14 @@ convertPalette(const fxMesaContext fxMesa, FxU32 data[256], const struct gl_colo
    }
 }
 
-
+/* Handling texture upload*/
 void
 fxDDTexPalette(GLcontext * ctx, struct gl_texture_object *tObj)
 {
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
 
    if (tObj) {
+      fprintf(stderr, "[fxDDTexPalette] Per-texture palette set for tObj %p (Name=%d)\n", (void*)tObj, tObj->Name);
       /* per-texture palette */
       tfxTexInfo *ti;
       if (TDFX_DEBUG & VERBOSE_DRIVER) {
@@ -590,6 +591,7 @@ fxDDTexPalette(GLcontext * ctx, struct gl_texture_object *tObj)
       fxTexInvalidate(ctx, tObj);
    }
    else {
+      fprintf(stderr, "[fxDDTexPalette] Global/shared palette set\n");
       /* global texture palette */
       if (TDFX_DEBUG & VERBOSE_DRIVER) {
 	 fprintf(stderr, "fxDDTexPalette(global)\n");
@@ -1300,86 +1302,304 @@ adjust2DRatio (GLcontext *ctx,
    return GL_TRUE;
 }
 
+/*For Palette expansion*/
+/* Simple FNV-1a 32-bit hash for change detection */
+static GLuint
+fx_crc32(const GLubyte *data, size_t len)
+{
+    /* Note: Not a true CRC32, just a fast 32-bit hash */
+    GLuint hash = 2166136261u;
+    size_t i;
+
+    for (i = 0; i < len; ++i) {
+        hash ^= (GLuint)data[i];
+        hash *= 16777619u;
+    }
+    return hash;
+}
+
 /* 
    Nejc Mesa6.3+ change, for paletted textures you need to pass argb8888 to mesa
    Inject Palette Expansion Code
 */
 static void
 fxExpandCI8ToRGBA8888(GLcontext *ctx, const GLubyte *src, GLubyte *dst,
-                      GLint width, GLint height)
+                      GLint width, GLint height, const struct gl_texture_object *texObj)
 {
-    const struct gl_color_table *palette = &ctx->Texture.Palette;
+    /* Static cache variables */
+    static GLuint last_palette_crc = 0;
+    static GLuint last_indices_crc = 0;
+    static GLubyte *last_expanded = NULL;
+    static GLsizei last_buf_size = 0;
+
+    /* Local variables (C89: declarations first) */
+    static int expand_call_counter = 0;
+    const struct gl_color_table *palette = NULL;
     GLint i;
+    GLuint palette_crc = 0;
+    GLuint indices_crc = 0;
+    GLsizei buf_size;
 
-    
+    int detect_ok;
+    int use_floats;
+    int detect_count;
+    int entries_to_check;
+    int comp_idx;
+    int px;
+    int limit;
+    const GLubyte *pbytes;
+    GLfloat f0, f1, f2, f3;
+    unsigned char tmp4[4];
+    size_t off;
+    const GLubyte (*btable3)[3];
+    const GLubyte (*btable4)[4];
+
+    fprintf(stderr, "[fxExpandCI8ToRGBA8888] Call #%d for texObj %p\n",
+            ++expand_call_counter, (void*)texObj);
+
+    /* Check if we use Per-texture Palette or shared */
+    if (texObj && texObj->Palette.Table && texObj->Palette.Size > 0) {
+        palette = &texObj->Palette;
+        fprintf(stderr, "Using per-texture palette for texObj %p\n", (void*)texObj);
+    } else {
+        palette = &ctx->Texture.Palette;
+        fprintf(stderr, "Using shared context palette\n");
+    }
+
+    fprintf(stderr, "[fxExpandCI8ToRGBA8888] Start\n");
+    fprintf(stderr, "Palette pointer: %p, Format: 0x%x, Size: %d\n",
+        (void*)palette->Table, palette->Format, palette->Size);
+
+    /* Print palette as floats (already present) */
+    for (i = 0; i < 8 && i < palette->Size; ++i) {
+        fprintf(stderr, "Palette[%d]: %f %f %f %f\n", i,
+         ((const GLfloat*)palette->Table)[i*4+0],
+         ((const GLfloat*)palette->Table)[i*4+1],
+         ((const GLfloat*)palette->Table)[i*4+2],
+         ((const GLfloat*)palette->Table)[i*4+3]);
+    }
+
+    /* Print palette as raw bytes (optional, for deeper debugging) */
+    {
+        const GLubyte *paletteBytes = (const GLubyte*)palette->Table;
+        int j;
+        fprintf(stderr, "Palette bytes (first 32):");
+        for (j = 0; j < 32 && j < palette->Size * 4 * (int)sizeof(GLfloat); ++j) {
+            fprintf(stderr, " %02x", paletteBytes[j]);
+        }
+        fprintf(stderr, "\n");
+    }
+
+    /* Early out if no palette */
     if (!palette->Table || palette->Size == 0) {
-
-        /* Fill with a test pattern */
+        fprintf(stderr, "  Palette is empty or NULL — using fallback pattern\n");
         for (i = 0; i < width * height; ++i) {
             GLubyte index = src[i];
-            dst[i * 4 + 0] = index; /* R = index */
-            dst[i * 4 + 1] = 128;   /* G = gray */
-            dst[i * 4 + 2] = 255 - index; /* B = inverted index */
-            dst[i * 4 + 3] = 255;   /* A = opaque */
+            dst[i * 4 + 0] = index;          /* R = index */
+            dst[i * 4 + 1] = 128;            /* G = gray */
+            dst[i * 4 + 2] = 255 - index;    /* B = inverted index */
+            dst[i * 4 + 3] = 255;            /* A = opaque */
         }
         return;
     }
 
-    /* Handle different palette formats properly */
-    if (palette->Format == GL_RGB) {
-        const GLfloat (*table)[3] = (const GLfloat (*)[3])palette->Table;
-        
-        for (i = 0; i < width * height; ++i) {
-            GLubyte index = src[i];
+    /* ---- Caching check ---- */
+    buf_size = width * height * 4;
 
-            if (index >= palette->Size) {
-                /* Prevent read out of bounds - use magenta for debugging */
-                dst[i * 4 + 0] = 255; /* R */
-                dst[i * 4 + 1] = 0;   /* G */
-                dst[i * 4 + 2] = 255; /* B */
-                dst[i * 4 + 3] = 255; /* A */
-                continue;
-            }
+    /* Compute CRCs (fx_crc32 must be present in this compilation unit) */
+    palette_crc = fx_crc32((const GLubyte*)palette->Table,
+                           palette->Size * ((palette->Format == GL_RGBA) ? 4 : 3) * sizeof(GLfloat));
+    indices_crc = fx_crc32(src, (size_t)width * (size_t)height);
 
-            /* Convert from float palette to byte values - try BGRA ordering */
-            dst[i * 4 + 0] = (GLubyte)(table[index][2] * 255.0f); /* B */
-            dst[i * 4 + 1] = (GLubyte)(table[index][1] * 255.0f); /* G */
-            dst[i * 4 + 2] = (GLubyte)(table[index][0] * 255.0f); /* R */
-            dst[i * 4 + 3] = 255; /* A = opaque */
+    if (palette_crc == last_palette_crc &&
+        indices_crc == last_indices_crc &&
+        last_expanded != NULL &&
+        buf_size == last_buf_size) {
+        /* Cache hit — just copy from last expansion */
+        memcpy(dst, last_expanded, (size_t)buf_size);
+        fprintf(stderr, "[fxExpandCI8ToRGBA8888] Cache hit — skipping expansion\n");
+        return;
+    }
+
+    /* Cache miss — update cache storage */
+    if (last_expanded == NULL || buf_size != last_buf_size) {
+        if (last_expanded) {
+            free(last_expanded);
         }
-        
+        last_expanded = (GLubyte*)malloc((size_t)buf_size);
+        last_buf_size = buf_size;
+    }
+    last_palette_crc = palette_crc;
+    last_indices_crc = indices_crc;
 
-    } else if (palette->Format == GL_RGBA) {
-        const GLfloat (*table)[4] = (const GLfloat (*)[4])palette->Table;
+    /* ---- Actual expansion with auto-detect of palette storage (floats vs bytes) ---- */
+    /* Heuristic detection: check first few entries interpreted as floats are in [0..1] */
+    detect_ok = 0;
+    use_floats = 0;
+    detect_count = 4;
+    pbytes = (const GLubyte *) palette->Table;
+    if (palette->Table && palette->Size > 0) {
+        if (palette->Format == GL_RGBA) {
+            entries_to_check = (palette->Size < detect_count) ? palette->Size : detect_count;
+            for (comp_idx = 0; comp_idx < entries_to_check; ++comp_idx) {
+                /* read 4 floats (16 bytes) from pbytes at entry comp_idx */
+                off = (size_t)comp_idx * 4u * sizeof(GLfloat);
 
-        for (i = 0; i < width * height; ++i) {
-            GLubyte index = src[i];
+                tmp4[0] = pbytes[off + 0]; tmp4[1] = pbytes[off + 1];
+                tmp4[2] = pbytes[off + 2]; tmp4[3] = pbytes[off + 3];
+                memcpy(&f0, tmp4, sizeof(GLfloat));
 
-            if (index >= palette->Size) {
-                /* Prevent read out of bounds - use magenta for debugging */
-                dst[i * 4 + 0] = 255; /* R */
-                dst[i * 4 + 1] = 0;   /* G */
-                dst[i * 4 + 2] = 255; /* B */
-                dst[i * 4 + 3] = 255; /* A */
-                continue;
+                tmp4[0] = pbytes[off + 4]; tmp4[1] = pbytes[off + 5];
+                tmp4[2] = pbytes[off + 6]; tmp4[3] = pbytes[off + 7];
+                memcpy(&f1, tmp4, sizeof(GLfloat));
+
+                tmp4[0] = pbytes[off + 8]; tmp4[1] = pbytes[off + 9];
+                tmp4[2] = pbytes[off + 10]; tmp4[3] = pbytes[off + 11];
+                memcpy(&f2, tmp4, sizeof(GLfloat));
+
+                tmp4[0] = pbytes[off + 12]; tmp4[1] = pbytes[off + 13];
+                tmp4[2] = pbytes[off + 14]; tmp4[3] = pbytes[off + 15];
+                memcpy(&f3, tmp4, sizeof(GLfloat));
+
+                if (!(f0 >= 0.0f && f0 <= 1.0f &&
+                      f1 >= 0.0f && f1 <= 1.0f &&
+                      f2 >= 0.0f && f2 <= 1.0f &&
+                      f3 >= 0.0f && f3 <= 1.0f)) {
+                    detect_ok = 0;
+                    break;
+                } else {
+                    detect_ok = 1;
+                }
             }
+            if (detect_ok) {
+                use_floats = 1;
+            } else {
+                use_floats = 0;
+            }
+        } else { /* GL_RGB */
+            entries_to_check = (palette->Size < detect_count) ? palette->Size : detect_count;
+            for (comp_idx = 0; comp_idx < entries_to_check; ++comp_idx) {
+                /* read 3 floats (12 bytes) from pbytes at entry comp_idx */
+                off = (size_t)comp_idx * 3u * sizeof(GLfloat);
 
-            /* Convert from float palette to byte values */
-            dst[i * 4 + 0] = (GLubyte)(table[index][0] * 255.0f); /* R */
-            dst[i * 4 + 1] = (GLubyte)(table[index][1] * 255.0f); /* G */
-            dst[i * 4 + 2] = (GLubyte)(table[index][2] * 255.0f); /* B */
-            dst[i * 4 + 3] = (GLubyte)(table[index][3] * 255.0f); /* A */
+                tmp4[0] = pbytes[off + 0]; tmp4[1] = pbytes[off + 1];
+                tmp4[2] = pbytes[off + 2]; tmp4[3] = pbytes[off + 3];
+                memcpy(&f0, tmp4, sizeof(GLfloat));
+
+                tmp4[0] = pbytes[off + 4]; tmp4[1] = pbytes[off + 5];
+                tmp4[2] = pbytes[off + 6]; tmp4[3] = pbytes[off + 7];
+                memcpy(&f1, tmp4, sizeof(GLfloat));
+
+                tmp4[0] = pbytes[off + 8]; tmp4[1] = pbytes[off + 9];
+                tmp4[2] = pbytes[off + 10]; tmp4[3] = pbytes[off + 11];
+                memcpy(&f2, tmp4, sizeof(GLfloat));
+
+                if (!(f0 >= 0.0f && f0 <= 1.0f &&
+                      f1 >= 0.0f && f1 <= 1.0f &&
+                      f2 >= 0.0f && f2 <= 1.0f)) {
+                    detect_ok = 0;
+                    break;
+                } else {
+                    detect_ok = 1;
+                }
+            }
+            if (detect_ok) {
+                use_floats = 1;
+            } else {
+                use_floats = 0;
+            }
         }
     } else {
-        fprintf(stderr, "fxExpandCI8ToRGBA8888 ERROR: Unsupported palette format 0x%x! Using fallback.\n", palette->Format);
-        /* Fill with a test pattern */
+        /* default to floats if unknown */
+        use_floats = 1;
+    }
+
+    if (palette->Format == GL_RGB) {
+        fprintf(stderr, "  Using GL_RGB palette format\n");
+        if (use_floats) {
+            const GLfloat (*table)[3] = (const GLfloat (*)[3]) palette->Table;
+            for (i = 0; i < width * height; ++i) {
+                GLubyte index = src[i];
+                if (index >= palette->Size) {
+                    /* Prevent read out of bounds - use magenta for debugging */
+                    dst[i * 4 + 0] = 255; /* R */
+                    dst[i * 4 + 1] = 0;   /* G */
+                    dst[i * 4 + 2] = 255; /* B */
+                    dst[i * 4 + 3] = 255; /* A */
+                    continue;
+                }
+                /* Convert from float palette to byte values - try BGRA ordering */
+                dst[i * 4 + 0] = (GLubyte)(table[index][2] * 255.0f); /* B */
+                dst[i * 4 + 1] = (GLubyte)(table[index][1] * 255.0f); /* G */
+                dst[i * 4 + 2] = (GLubyte)(table[index][0] * 255.0f); /* R */
+                dst[i * 4 + 3] = 255; /* A = opaque */
+            }
+        } else {
+            btable3 = (const GLubyte (*)[3]) palette->Table;
+            for (i = 0; i < width * height; ++i) {
+                GLubyte index = src[i];
+                if (index >= palette->Size) {
+                    dst[i * 4 + 0] = 255; dst[i * 4 + 1] = 0;
+                    dst[i * 4 + 2] = 255; dst[i * 4 + 3] = 255;
+                    continue;
+                }
+                dst[i * 4 + 0] = btable3[index][2]; /* B */
+                dst[i * 4 + 1] = btable3[index][1]; /* G */
+                dst[i * 4 + 2] = btable3[index][0]; /* R */
+                dst[i * 4 + 3] = 255;
+            }
+        }
+    } else if (palette->Format == GL_RGBA) {
+        fprintf(stderr, "  Using GL_RGBA palette format\n");
+        if (use_floats) {
+            const GLfloat (*table)[4] = (const GLfloat (*)[4]) palette->Table;
+            for (i = 0; i < width * height; ++i) {
+                GLubyte index = src[i];
+                if (index >= palette->Size) {
+                    dst[i * 4 + 0] = 255; dst[i * 4 + 1] = 0;
+                    dst[i * 4 + 2] = 255; dst[i * 4 + 3] = 255;
+                    continue;
+                }
+                dst[i * 4 + 0] = (GLubyte)(table[index][0] * 255.0f); /* R */
+                dst[i * 4 + 1] = (GLubyte)(table[index][1] * 255.0f); /* G */
+                dst[i * 4 + 2] = (GLubyte)(table[index][2] * 255.0f); /* B */
+                dst[i * 4 + 3] = (GLubyte)(table[index][3] * 255.0f); /* A */
+            }
+        } else {
+            btable4 = (const GLubyte (*)[4]) palette->Table;
+            for (i = 0; i < width * height; ++i) {
+                GLubyte index = src[i];
+                if (index >= palette->Size) {
+                    dst[i * 4 + 0] = 255; dst[i * 4 + 1] = 0;
+                    dst[i * 4 + 2] = 255; dst[i * 4 + 3] = 255;
+                    continue;
+                }
+                dst[i * 4 + 0] = btable4[index][0]; /* R */
+                dst[i * 4 + 1] = btable4[index][1]; /* G */
+                dst[i * 4 + 2] = btable4[index][2]; /* B */
+                dst[i * 4 + 3] = btable4[index][3]; /* A */
+            }
+        }
+    } else {
+        fprintf(stderr, "fxExpandCI8ToRGBA8888 ERROR: Unsupported palette format 0x%x! Using fallback.\n",
+                palette->Format);
         for (i = 0; i < width * height; ++i) {
             GLubyte index = src[i];
-            dst[i * 4 + 0] = index; /* R = index */
-            dst[i * 4 + 1] = 128;   /* G = gray */
-            dst[i * 4 + 2] = 255 - index; /* B = inverted index */
-            dst[i * 4 + 3] = 255;   /* A = opaque */
+            dst[i * 4 + 0] = index;          /* R = index */
+            dst[i * 4 + 1] = 128;            /* G = gray */
+            dst[i * 4 + 2] = 255 - index;    /* B = inverted index */
+            dst[i * 4 + 3] = 255;            /* A = opaque */
         }
+    }
+
+    /* Save expanded result into cache */
+    memcpy(last_expanded, dst, (size_t)buf_size);
+
+    /* Print first 8 expanded pixels so you can inspect mapping in logs */
+    limit = (width * height < 8) ? (width * height) : 8;
+    for (px = 0; px < limit; ++px) {
+        fprintf(stderr, "Expanded pixel %d: idx=%u -> %02x %02x %02x %02x\n",
+                px, src[px], dst[px*4+0], dst[px*4+1], dst[px*4+2], dst[px*4+3]);
     }
 }
 
@@ -1538,8 +1758,17 @@ fxDDTexImage2D(GLcontext * ctx, GLenum target, GLint level,
       } else {
          if (isCI8) {
             /* Convert CI8 to RGBA manually, for paletted textures */
+            fprintf(stderr, "[fxDDTexImage2D] About to expand CI8 to RGBA8888 for texObj %p\n", (void*)texObj);
             fxExpandCI8ToRGBA8888(ctx, (const GLubyte *)pixels,
-                                  (GLubyte *)texImage->Data, width, height);
+                                  (GLubyte *)texImage->Data, width, height, texObj);
+            fprintf(stderr, "[fxDDTexImage2D] Finished expanding CI8 for texObj %p\n", (void*)texObj);
+
+            fprintf(stderr, "First 16 bytes of expanded texture data: ");
+            for (int i = 0; i < 16; ++i) {
+               fprintf(stderr, "%02x ", ((GLubyte*)texImage->Data)[i]);
+            }
+            fprintf(stderr, "\n");
+            
          } else {
             /* No rescaling needed */
             texImage->TexFormat->StoreImage(ctx, 2, texImage->Format,

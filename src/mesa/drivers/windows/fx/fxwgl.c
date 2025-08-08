@@ -856,12 +856,13 @@ wglChoosePixelFormat (HDC hdc, const PIXELFORMATDESCRIPTOR *ppfd)
    }
 
    // Temp 16bit override
+   /*
    if (fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_PIX") != NULL)
    {
       pfd.cDepthBits = 16;
       pfd.cColorBits = 16;
    }
-
+   */
 #endif
 
 /* Check for forced 16-bit pixel format registry/environment variable - AFTER game-specific logic */

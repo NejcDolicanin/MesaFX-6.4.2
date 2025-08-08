@@ -413,7 +413,8 @@ fxMesaCreateContext(GLuint win,
  }
 
  grSstSelect(glbCurrentBoard);
- /*grEnable(GR_OPENGL_MODE_EXT);*/ /* [koolsmoky] */
+ /*Nejc - Pass to glide we are OpenGL*/
+ grEnable(GR_OPENGL_MODE_EXT); /* [koolsmoky] */ 
  voodoo = &glbHWConfig.SSTs[glbCurrentBoard];
 
  if (TDFX_DEBUG & VERBOSE_DRIVER) {
@@ -1041,8 +1042,10 @@ fxCloseHardware(void)
 {
    if (glbGlideInitialized) {
       if (glbTotNumCtx == 0) {
-	 grGlideShutdown();
-	 glbGlideInitialized = 0;
+         //Nejc - Added for openGl
+         grDisable(GR_OPENGL_MODE_EXT);
+	      grGlideShutdown();
+	      glbGlideInitialized = 0;
       }
    }
 }

@@ -1265,32 +1265,20 @@ fxSetupTexture_NoLock(GLcontext * ctx)
       fprintf(stderr, "fxSetupTexture_NoLock(...)\n");
    }
 
-
-    fprintf(stderr, "[DEBUG] Have CmbExt: %x, Unit0: %x Unit1: %x haveTwoTMUs: %d\n",
-        fxMesa->HaveCmbExt,
-        ctx->Texture.Unit[0]._ReallyEnabled,
-        ctx->Texture.Unit[1]._ReallyEnabled,
-        fxMesa->haveTwoTMUs);
-
-
    if (fxMesa->HaveCmbExt) {
       /* Texture Combine, Color Combine and Alpha Combine. */
       if ((ctx->Texture.Unit[0]._ReallyEnabled & (TEXTURE_1D_BIT|TEXTURE_2D_BIT)) &&
           (ctx->Texture.Unit[1]._ReallyEnabled & (TEXTURE_1D_BIT|TEXTURE_2D_BIT)) &&
           fxMesa->haveTwoTMUs) {
-             fprintf(stderr, "[DEBUG] Enable fxSetupTextureDoubleTMUNapalm_NoLock\n");
          fxSetupTextureDoubleTMUNapalm_NoLock(ctx);
       }
       else if (ctx->Texture.Unit[0]._ReallyEnabled & (TEXTURE_1D_BIT|TEXTURE_2D_BIT)) {
-         fprintf(stderr, "[DEBUG] Enable fxSetupTextureSingleTMUNapalm_NoLock - 0\n");
          fxSetupTextureSingleTMUNapalm_NoLock(ctx, 0);
       }
       else if (ctx->Texture.Unit[1]._ReallyEnabled & (TEXTURE_1D_BIT|TEXTURE_2D_BIT)) {
-         fprintf(stderr, "[DEBUG] Enable fxSetupTextureSingleTMUNapalm_NoLock - 1\n");
          fxSetupTextureSingleTMUNapalm_NoLock(ctx, 1);
       }
       else {
-         fprintf(stderr, "[DEBUG] Enable fxSetupTextureNoneNapalm_NoLock\n");
          fxSetupTextureNoneNapalm_NoLock(ctx);
       }
    } else {
@@ -1298,19 +1286,15 @@ fxSetupTexture_NoLock(GLcontext * ctx)
       if ((ctx->Texture.Unit[0]._ReallyEnabled & (TEXTURE_1D_BIT|TEXTURE_2D_BIT)) &&
           (ctx->Texture.Unit[1]._ReallyEnabled & (TEXTURE_1D_BIT|TEXTURE_2D_BIT)) &&
           fxMesa->haveTwoTMUs) {
-            fprintf(stderr, "[DEBUG] Enable fxSetupTextureDoubleTMU_NoLock\n");
          fxSetupTextureDoubleTMU_NoLock(ctx);
       }
       else if (ctx->Texture.Unit[0]._ReallyEnabled & (TEXTURE_1D_BIT|TEXTURE_2D_BIT)) {
-         fprintf(stderr, "[DEBUG] Enable fxSetupTextureDoubleTMU_NoLock - 0 \n");
          fxSetupTextureSingleTMU_NoLock(ctx, 0);
       }
       else if (ctx->Texture.Unit[1]._ReallyEnabled & (TEXTURE_1D_BIT|TEXTURE_2D_BIT)) {
-         fprintf(stderr, "[DEBUG] Enable fxSetupTextureDoubleTMU_NoLock - 1 \n");
          fxSetupTextureSingleTMU_NoLock(ctx, 1);
       }
       else {
-         fprintf(stderr, "[DEBUG] Enable fxSetupTextureNone_NoLock - 1 \n");
          fxSetupTextureNone_NoLock(ctx);
       }
    }
@@ -1319,7 +1303,6 @@ fxSetupTexture_NoLock(GLcontext * ctx)
 void
 fxSetupTexture(GLcontext * ctx)
 {
-  /* fprintf(stderr, "Try to board lock!!! \n"); */
    BEGIN_BOARD_LOCK();
    fxSetupTexture_NoLock(ctx);
    END_BOARD_LOCK();

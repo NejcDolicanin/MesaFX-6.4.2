@@ -309,6 +309,27 @@ _mesa_ColorTable( GLenum target, GLenum internalFormat,
                   GLsizei width, GLenum format, GLenum type,
                   const GLvoid *data )
 {
+   /* Nejc Debug */
+   fprintf(stderr, "[_mesa_ColorTable] Called: target=0x%x, width=%d, format=0x%x, type=0x%x\n",
+        target, width, format, type);
+
+
+   if (target == GL_SHARED_TEXTURE_PALETTE_EXT && width >= 8) {
+    if (type == GL_UNSIGNED_BYTE) {
+        const GLubyte* bytes = (const GLubyte*)data;
+        fprintf(stderr, "Palette upload (first 8*3 bytes):\n");
+        for (int i = 0; i < 8; ++i) {
+            fprintf(stderr, "  [%d]: %02x %02x %02x\n", i, bytes[i*3+0], bytes[i*3+1], bytes[i*3+2]);
+        }
+    } else if (type == GL_FLOAT) {
+        const GLfloat* floats = (const GLfloat*)data;
+        fprintf(stderr, "Palette upload (first 8*3 floats):\n");
+        for (int i = 0; i < 8; ++i) {
+            fprintf(stderr, "  [%d]: %f %f %f\n", i, floats[i*3+0], floats[i*3+1], floats[i*3+2]);
+        }
+    }
+}
+
    GET_CURRENT_CONTEXT(ctx);
    struct gl_texture_unit *texUnit = &ctx->Texture.Unit[ctx->Texture.CurrentUnit];
    struct gl_texture_object *texObj = NULL;
