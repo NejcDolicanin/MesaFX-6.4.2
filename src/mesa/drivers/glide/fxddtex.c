@@ -494,15 +494,12 @@ fxDDIsTextureResident(GLcontext *ctx, struct gl_texture_object *tObj)
    return (ti && ti->isInTM);
 }
 
-
-
 /*
  * Convert a gl_color_table texture palette to Glide's format.
  */
 static GrTexTable_t
 convertPalette(const fxMesaContext fxMesa, FxU32 data[256], const struct gl_color_table *table)
 {
-   const GLubyte *tableUB = (const GLubyte *) table->Table;
    GLint width = table->Size;
    FxU32 r, g, b, a;
    GLint i;
@@ -515,7 +512,12 @@ convertPalette(const fxMesaContext fxMesa, FxU32 data[256], const struct gl_colo
       return GR_TEXTABLE_PALETTE;
    }
 
-   ASSERT(table->Type == GL_UNSIGNED_BYTE);
+   /* Nejc Mesa 6.3+ change: Handle both GL_UNSIGNED_BYTE and GL_FLOAT table data */
+   /* Optimize for the common case (GL_FLOAT) by checking the rare case first */
+   if (table->Type == GL_UNSIGNED_BYTE) {
+      /* Legacy GL_UNSIGNED_BYTE path - rare in Mesa 6.3+ */
+      const GLubyte *tableUB = (const GLubyte *) table->Table;
+      fprintf(stderr, "[convertPalette] Using GL_UNSIGNED_BYTE data\n");
 
    switch (table->Format) {
    case GL_INTENSITY:
@@ -571,6 +573,62 @@ convertPalette(const fxMesaContext fxMesa, FxU32 data[256], const struct gl_colo
 	 data[i] = (a << 24) | (r << 16) | (g << 8) | b;
       }
       return fxMesa->HavePalExt ? GR_TEXTABLE_PALETTE_6666_EXT : GR_TEXTABLE_PALETTE;
+   }
+   } else {
+      /* Nejc - Default to GL_FLOAT path - common case in Mesa 6.3+ */
+      const GLfloat *tableF = (const GLfloat *) table->Table;
+      fprintf(stderr, "[convertPalette] Using GL_FLOAT data\n");
+      
+      switch (table->Format) {
+      case GL_INTENSITY:
+         for (i = 0; i < width; i++) {
+            r = g = b = a = (GLubyte)(tableF[i] * 255.0f);
+            data[i] = (a << 24) | (r << 16) | (g << 8) | b;
+         }
+         fprintf(stderr, "[convertPalette] GL_INTENSITY (float): First few entries: [0]=0x%08x [1]=0x%08x [2]=0x%08x\n", 
+                 width > 0 ? data[0] : 0, width > 1 ? data[1] : 0, width > 2 ? data[2] : 0);
+         return fxMesa->HavePalExt ? GR_TEXTABLE_PALETTE_6666_EXT : GR_TEXTABLE_PALETTE;
+      case GL_LUMINANCE:
+         for (i = 0; i < width; i++) {
+            r = g = b = (GLubyte)(tableF[i] * 255.0f);
+            a = 255;
+            data[i] = (a << 24) | (r << 16) | (g << 8) | b;
+         }
+         return GR_TEXTABLE_PALETTE;
+      case GL_ALPHA:
+         for (i = 0; i < width; i++) {
+            r = g = b = 255;
+            a = (GLubyte)(tableF[i] * 255.0f);
+            data[i] = (a << 24) | (r << 16) | (g << 8) | b;
+         }
+         return fxMesa->HavePalExt ? GR_TEXTABLE_PALETTE_6666_EXT : GR_TEXTABLE_PALETTE;
+      case GL_LUMINANCE_ALPHA:
+         for (i = 0; i < width; i++) {
+            r = g = b = (GLubyte)(tableF[i * 2 + 0] * 255.0f);
+            a = (GLubyte)(tableF[i * 2 + 1] * 255.0f);
+            data[i] = (a << 24) | (r << 16) | (g << 8) | b;
+         }
+         return fxMesa->HavePalExt ? GR_TEXTABLE_PALETTE_6666_EXT : GR_TEXTABLE_PALETTE;
+      default:
+      case GL_RGB:
+         for (i = 0; i < width; i++) {
+            r = (GLubyte)(tableF[i * 3 + 0] * 255.0f);
+            g = (GLubyte)(tableF[i * 3 + 1] * 255.0f);
+            b = (GLubyte)(tableF[i * 3 + 2] * 255.0f);
+            a = 255;
+            data[i] = (a << 24) | (r << 16) | (g << 8) | b;
+         }
+         return GR_TEXTABLE_PALETTE;
+      case GL_RGBA:
+         for (i = 0; i < width; i++) {
+            r = (GLubyte)(tableF[i * 4 + 0] * 255.0f);
+            g = (GLubyte)(tableF[i * 4 + 1] * 255.0f);
+            b = (GLubyte)(tableF[i * 4 + 2] * 255.0f);
+            a = (GLubyte)(tableF[i * 4 + 3] * 255.0f);
+            data[i] = (a << 24) | (r << 16) | (g << 8) | b;
+         }
+         return fxMesa->HavePalExt ? GR_TEXTABLE_PALETTE_6666_EXT : GR_TEXTABLE_PALETTE;
+      }
    }
 }
 
