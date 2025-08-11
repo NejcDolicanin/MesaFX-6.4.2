@@ -309,10 +309,9 @@ _mesa_ColorTable( GLenum target, GLenum internalFormat,
                   GLsizei width, GLenum format, GLenum type,
                   const GLvoid *data )
 {
-   /* Nejc Debug */
+   /* Nejc Debug 
    fprintf(stderr, "[_mesa_ColorTable] Called: target=0x%x, width=%d, format=0x%x, type=0x%x\n",
         target, width, format, type);
-
 
    if (target == GL_SHARED_TEXTURE_PALETTE_EXT && width >= 8) {
     if (type == GL_UNSIGNED_BYTE) {
@@ -329,7 +328,7 @@ _mesa_ColorTable( GLenum target, GLenum internalFormat,
         }
     }
 }
-
+*/
    GET_CURRENT_CONTEXT(ctx);
    struct gl_texture_unit *texUnit = &ctx->Texture.Unit[ctx->Texture.CurrentUnit];
    struct gl_texture_object *texObj = NULL;

@@ -504,9 +504,6 @@ convertPalette(const fxMesaContext fxMesa, FxU32 data[256], const struct gl_colo
    FxU32 r, g, b, a;
    GLint i;
 
-   fprintf(stderr, "[convertPalette] Called: table=%p, table->Table=%p, size=%d, format=0x%x, type=0x%x\n",
-           (void*)table, (void*)table->Table, table->Size, table->Format, table->Type);
-
    if (!table || !table->Table) {
       fprintf(stderr, "[convertPalette] ERROR: NULL table or table data!\n");
       return GR_TEXTABLE_PALETTE;
@@ -522,22 +519,20 @@ convertPalette(const fxMesaContext fxMesa, FxU32 data[256], const struct gl_colo
    switch (table->Format) {
    case GL_INTENSITY:
       for (i = 0; i < width; i++) {
-	 r = tableUB[i];
-	 g = tableUB[i];
-	 b = tableUB[i];
-	 a = tableUB[i];
-	 data[i] = (a << 24) | (r << 16) | (g << 8) | b;
+	      r = tableUB[i];
+	      g = tableUB[i];
+	      b = tableUB[i];
+	      a = tableUB[i];
+	      data[i] = (a << 24) | (r << 16) | (g << 8) | b;
       }
-      fprintf(stderr, "[convertPalette] GL_INTENSITY: First few entries: [0]=0x%08x [1]=0x%08x [2]=0x%08x\n", 
-              width > 0 ? data[0] : 0, width > 1 ? data[1] : 0, width > 2 ? data[2] : 0);
       return fxMesa->HavePalExt ? GR_TEXTABLE_PALETTE_6666_EXT : GR_TEXTABLE_PALETTE;
    case GL_LUMINANCE:
       for (i = 0; i < width; i++) {
-	 r = tableUB[i];
-	 g = tableUB[i];
-	 b = tableUB[i];
-	 a = 255;
-	 data[i] = (a << 24) | (r << 16) | (g << 8) | b;
+	      r = tableUB[i];
+	      g = tableUB[i];
+	      b = tableUB[i];
+	      a = 255;
+	      data[i] = (a << 24) | (r << 16) | (g << 8) | b;
       }
       return GR_TEXTABLE_PALETTE;
    case GL_ALPHA:
@@ -577,7 +572,6 @@ convertPalette(const fxMesaContext fxMesa, FxU32 data[256], const struct gl_colo
    } else {
       /* Nejc - Default to GL_FLOAT path - common case in Mesa 6.3+ */
       const GLfloat *tableF = (const GLfloat *) table->Table;
-      fprintf(stderr, "[convertPalette] Using GL_FLOAT data\n");
       
       switch (table->Format) {
       case GL_INTENSITY:
@@ -585,8 +579,6 @@ convertPalette(const fxMesaContext fxMesa, FxU32 data[256], const struct gl_colo
             r = g = b = a = (GLubyte)(tableF[i] * 255.0f);
             data[i] = (a << 24) | (r << 16) | (g << 8) | b;
          }
-         fprintf(stderr, "[convertPalette] GL_INTENSITY (float): First few entries: [0]=0x%08x [1]=0x%08x [2]=0x%08x\n", 
-                 width > 0 ? data[0] : 0, width > 1 ? data[1] : 0, width > 2 ? data[2] : 0);
          return fxMesa->HavePalExt ? GR_TEXTABLE_PALETTE_6666_EXT : GR_TEXTABLE_PALETTE;
       case GL_LUMINANCE:
          for (i = 0; i < width; i++) {
@@ -639,11 +631,10 @@ fxDDTexPalette(GLcontext * ctx, struct gl_texture_object *tObj)
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
 
    if (tObj) {
-      fprintf(stderr, "[fxDDTexPalette] Per-texture palette set for tObj %p (Name=%d)\n", (void*)tObj, tObj->Name);
       /* per-texture palette */
       tfxTexInfo *ti;
       if (TDFX_DEBUG & VERBOSE_DRIVER) {
-	 fprintf(stderr, "fxDDTexPalette(%d, %x)\n",
+	      fprintf(stderr, "fxDDTexPalette(%d, %x)\n",
 		 tObj->Name, (GLuint) tObj->DriverData);
       }
       /* This might be a proxy texture. */
@@ -656,10 +647,9 @@ fxDDTexPalette(GLcontext * ctx, struct gl_texture_object *tObj)
       fxTexInvalidate(ctx, tObj);
    }
    else {
-      fprintf(stderr, "[fxDDTexPalette] Global/shared palette set\n");
       /* global texture palette */
       if (TDFX_DEBUG & VERBOSE_DRIVER) {
-	 fprintf(stderr, "fxDDTexPalette(global)\n");
+	      fprintf(stderr, "fxDDTexPalette(global)\n");
       }
       fxMesa->glbPalType = convertPalette(fxMesa, fxMesa->glbPalette.data, &ctx->Texture.Palette);
       fxMesa->new_state |= FX_NEW_TEXTURING;
