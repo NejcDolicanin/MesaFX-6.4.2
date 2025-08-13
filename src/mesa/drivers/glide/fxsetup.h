@@ -157,10 +157,6 @@
         break;                                                      \
     }
 
-/* Nejc SOF test*/
-/* void fxTexValidate(GLcontext * ctx, struct gl_texture_object *tObj); */
-
-
 static void
 fxSetupTextureEnvNapalm_NoLock(GLcontext * ctx, GLuint textureset, GLuint tmu, GLboolean iterated)
 {

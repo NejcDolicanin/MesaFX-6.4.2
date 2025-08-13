@@ -47,10 +47,10 @@
 #include "swrast.h"
 #include "texstore.h"
 
-/* Nejc SOF test, static void*/
 static void
 fxTexValidate(GLcontext * ctx, struct gl_texture_object *tObj)
 {
+   fxMesaContext fxMesa = FX_CONTEXT(ctx);
    tfxTexInfo *ti = fxTMGetTexInfo(tObj);
    GLint minl, maxl;
 
