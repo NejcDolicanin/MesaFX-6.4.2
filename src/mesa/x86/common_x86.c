@@ -268,10 +268,11 @@ static void check_os_sse_support( void )
       if (ret || !enabled)
          _mesa_x86_cpu_features &= ~(X86_FEATURE_XMM);
    }
-#elif defined(WIN32)
+/* Nejc - disable OS SSE test, since we(3dfx) can run only on win9x and winNt and was causing Oni to crash */
+/*#elif defined(WIN32)
    LPTOP_LEVEL_EXCEPTION_FILTER oldFilter;
    
-   /* Install our ExceptionFilter */
+   // Install our ExceptionFilter
    oldFilter = SetUnhandledExceptionFilter( ExceptionFilter );
    
    if ( cpu_has_xmm ) {
@@ -306,7 +307,8 @@ static void check_os_sse_support( void )
    } else {
       message( "Tests of OS support for SSE failed!\n" );
    }
-#else
+*/
+   #else
    /* Do nothing on other platforms for now.
     */
    message( "Not testing OS support for SSE, leaving enabled.\n" );

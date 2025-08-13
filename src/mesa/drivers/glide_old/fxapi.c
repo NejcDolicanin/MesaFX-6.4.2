@@ -41,25 +41,23 @@
 
 #if defined(FX)
 #include "fxdrv.h"
-#include "fxutil.h"
-#include "fxframebuffer.h"
 
 #include "drivers/common/driverfuncs.h"
 #include "framebuffer.h"
 
 #ifndef TDFX_DEBUG
 int TDFX_DEBUG = (0
-/*		  | VERBOSE_VARRAY      */    /* fxtris.c */
-/*		  | VERBOSE_TEXTURE     */    /* Textures, fxddtex.c, fxtexman.c*/
-/*		  | VERBOSE_IMMEDIATE   */    /*Used for fxFramebuffer debug*/
-/*		  | VERBOSE_PIPELINE    */    /* fxtris.c */
-/*		  | VERBOSE_DRIVER      */       /* Daddy */
-/*		  | VERBOSE_STATE       */    /*Mesa verbose*/
-/*		  | VERBOSE_API         */    /* Mesa */
-/*		  | VERBOSE_DISPLAY_LIST*/    /**/
-/*		  | VERBOSE_LIGHTING */       /**/
-/*		  | VERBOSE_PRIMS */          /**/
-/*		  | VERBOSE_VERTS */          /*TMU Oni*/
+/*		  | VERBOSE_VARRAY */
+/*		  | VERBOSE_TEXTURE */
+/*		  | VERBOSE_IMMEDIATE */
+/*		  | VERBOSE_PIPELINE */
+/*		  | VERBOSE_DRIVER */
+/*		  | VERBOSE_STATE */
+/*		  | VERBOSE_API */
+/*		  | VERBOSE_DISPLAY_LIST */
+/*		  | VERBOSE_LIGHTING */
+/*		  | VERBOSE_PRIMS */
+/*		  | VERBOSE_VERTS */
    );
 #endif
 
@@ -230,27 +228,12 @@ static GrScreenResolution_t fxBestResolution (int width, int height)
         { GR_RESOLUTION_1856x1392, 1856, 1392 },
         { GR_RESOLUTION_1920x1440, 1920, 1440 },
         { GR_RESOLUTION_2048x1536, 2048, 1536 },
-        { GR_RESOLUTION_2048x2048, 2048, 2048 },
-        /* nd Extended */
-		  { GR_RESOLUTION_1280x720,  1280,   720 },
-		  { GR_RESOLUTION_1280x800,  1280,   800 },
-		  { GR_RESOLUTION_1360x768,  1360,   768 },
-		  { GR_RESOLUTION_1440x900,  1440,   900 },
-		  { GR_RESOLUTION_1600x900,  1600,   900 },
-		  { GR_RESOLUTION_1680x720,  1680,   720 },
-		  { GR_RESOLUTION_1680x1050, 1680,  1050 },
-		  { GR_RESOLUTION_1792x768,  1792,   768 },
-		  { GR_RESOLUTION_1920x800,  1920,   800 },
-		  { GR_RESOLUTION_1920x1080, 1920,  1080 },
-		  { GR_RESOLUTION_1920x1200, 1920,  1200 },
-		  /* This one added so we have an unreachable max, if more come */
-		  { GR_RESOLUTION_3840x2160, 3840,  2160 }
+        { GR_RESOLUTION_2048x2048, 2048, 2048 }
  };
 
  int i, size;
  int lastvalidres = GR_RESOLUTION_640x480;
- /* int min = 2048 * 2048; */ /* max is GR_RESOLUTION_2048x2048 */
- int min = 3840 * 2160;
+ int min = 2048 * 2048; /* max is GR_RESOLUTION_2048x2048 */
  GrResolution resTemplate = {
               GR_QUERY_ANY,
               GR_QUERY_ANY,
@@ -287,40 +270,13 @@ fxMesaContext GLAPIENTRY
 fxMesaCreateBestContext(GLuint win, GLint width, GLint height,
 			const GLint attribList[])
 {
-   /* Get best Resolution */
  int res = fxBestResolution(width, height);
 
  if (res == -1) {
     return NULL;
  }
 
- /* Nejc */
- /* Get best Refresh rate*/
- GrScreenRefresh_t refresh = GR_REFRESH_60Hz;  /* Default refresh */
- int refreshFromReg = ReadRefreshFromRegistry();  /* Or env variable */
-
- // Convert to GrScreenRefresh_t
- if (refreshFromReg > 0) {
-        switch (refreshFromReg) {
-            case 60:  refresh = GR_REFRESH_60Hz; break;
-            case 70:  refresh = GR_REFRESH_70Hz; break;
-            case 72:  refresh = GR_REFRESH_72Hz; break;
-            case 75:  refresh = GR_REFRESH_75Hz; break;
-            case 80:  refresh = GR_REFRESH_80Hz; break;
-            case 85:  refresh = GR_REFRESH_85Hz; break;
-            case 90:  refresh = GR_REFRESH_90Hz; break;
-            case 100: refresh = GR_REFRESH_100Hz; break;
-            case 120: refresh = GR_REFRESH_120Hz; break;
-            case 144: refresh = GR_REFRESH_144Hz; break;
-            default:
-                /* Unknown refresh, ignore override */
-                break;
-        }
-    }
-
-
- return fxMesaCreateContext(win, res, refresh, attribList);
- /* return fxMesaCreateContext(win, res, GR_REFRESH_60Hz, attribList); */
+ return fxMesaCreateContext(win, res, GR_REFRESH_60Hz, attribList);
 }
 
 
@@ -359,10 +315,6 @@ fxMesaCreateContext(GLuint win,
  colDepth = 16;
  depthSize = alphaSize = stencilSize = accumSize = 0;
 
- if (TDFX_DEBUG & VERBOSE_DRIVER) {
-    fprintf(stderr, "Processing user flags...\n");
- }
-
  i = 0;
  while (attribList[i] != FXMESA_NONE) {
        switch (attribList[i]) {
@@ -399,36 +351,19 @@ fxMesaCreateContext(GLuint win,
        i++;
  }
 
- if (TDFX_DEBUG & VERBOSE_DRIVER) {
-    fprintf(stderr, "About to query hardware...\n");
- }
-
  if (!fxQueryHardware()) {
     str = "no Voodoo hardware!";
     goto errorhandler;
  }
 
- if (TDFX_DEBUG & VERBOSE_DRIVER) {
-    fprintf(stderr, "Hardware query successful, selecting board...\n");
- }
-
  grSstSelect(glbCurrentBoard);
- /*Nejc - Pass to glide we are OpenGL*/
- grEnable(GR_OPENGL_MODE_EXT); /* [koolsmoky] */ 
+ /*grEnable(GR_OPENGL_MODE_EXT);*/ /* [koolsmoky] */
  voodoo = &glbHWConfig.SSTs[glbCurrentBoard];
-
- if (TDFX_DEBUG & VERBOSE_DRIVER) {
-    fprintf(stderr, "About to allocate fxMesa context...\n");
- }
 
  fxMesa = (fxMesaContext)CALLOC_STRUCT(tfxMesaContext);
  if (!fxMesa) {
     str = "private context";
     goto errorhandler;
- }
-
- if (TDFX_DEBUG & VERBOSE_DRIVER) {
-    fprintf(stderr, "fxMesa context allocated successfully\n");
  }
 
  if (getenv("MESA_FX_INFO")) {
@@ -447,11 +382,6 @@ fxMesaCreateContext(GLuint win,
  fxMesa->HaveTexus2 = Glide->txImgQuantize &&
                       Glide->txMipQuantize &&
                       Glide->txPalToNcc && !getenv("MESA_FX_IGNORE_TEXUS2");
-
- /* Nejc 16bit Textures override from 3dfx tools */
- if (fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_TEXTURES") != NULL ) {
-  fxMesa->HaveTexFmt = GL_FALSE;
- }
 
  /* Determine if we need vertex swapping, RGB order and SLI/AA */
  sliaa = 0;
@@ -709,14 +639,10 @@ fxMesaCreateContext(GLuint win,
                       fxMesa->snapVertices ? "" : "no ");
    }
 
-  sprintf(fxMesa->rendererString, "Mesa %s v0.64 %s%s",
+  sprintf(fxMesa->rendererString, "Mesa %s v0.63 %s%s",
           grGetString(GR_RENDERER),
           grGetString(GR_HARDWARE),
           ((fxMesa->type < GR_SSTTYPE_Voodoo4) && (voodoo->numChips > 1)) ? " SLI" : "");
-
-   if (TDFX_DEBUG & VERBOSE_DRIVER) {
-      fprintf(stderr, "About to create visual...\n");
-   }
 
    fxMesa->glVis = _mesa_create_visual(GL_TRUE,		/* RGB mode */
 				       doubleBuffer,
@@ -738,69 +664,35 @@ fxMesaCreateContext(GLuint win,
       goto errorhandler;
    }
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER) {
-      fprintf(stderr, "Visual created successfully, about to init driver functions...\n");
-   }
-
    _mesa_init_driver_functions(&functions);
-   
-   /* Set up FX-specific driver functions BEFORE creating context */
-   /* NEJC DELETE fxSetupDDPointers_PreContext(&functions, fxMesa); */
-
-   if (TDFX_DEBUG & VERBOSE_DRIVER) {
-      fprintf(stderr, "Driver functions initialized, about to create context...\n");
-      fprintf(stderr, "Visual: RGB=%d, DB=%d, Stereo=%d\n", 
-              fxMesa->glVis->rgbMode, fxMesa->glVis->doubleBufferMode, fxMesa->glVis->stereoMode);
-      fprintf(stderr, "Visual: R=%d, G=%d, B=%d, A=%d, Depth=%d, Stencil=%d\n",
-              fxMesa->glVis->redBits, fxMesa->glVis->greenBits, fxMesa->glVis->blueBits,
-              fxMesa->glVis->alphaBits, fxMesa->glVis->depthBits, fxMesa->glVis->stencilBits);
-   }
-
    ctx = fxMesa->glCtx = _mesa_create_context(fxMesa->glVis, shareCtx,
 					      &functions, (void *) fxMesa);
    if (!ctx) {
-      if (TDFX_DEBUG & VERBOSE_DRIVER) {
-         fprintf(stderr, "ERROR: _mesa_create_context failed!\n");
-         fprintf(stderr, "Visual pointer: %p\n", (void*)fxMesa->glVis);
-         fprintf(stderr, "ShareCtx pointer: %p\n", (void*)shareCtx);
-         fprintf(stderr, "Functions pointer: %p\n", (void*)&functions);
-         fprintf(stderr, "Driver data pointer: %p\n", (void*)fxMesa);
-      }
       str = "_mesa_create_context";
       goto errorhandler;
    }
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER) {
-      fprintf(stderr, "Mesa context created successfully\n");
-   }
-
-
-   if (TDFX_DEBUG & VERBOSE_DRIVER) {
-      fprintf(stderr, "About to call fxDDInitFxMesaContext...\n");
-   }
 
    if (!fxDDInitFxMesaContext(fxMesa)) {
       str = "fxDDInitFxMesaContext";
       goto errorhandler;
    }
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER) {
-      fprintf(stderr, "fxDDInitFxMesaContext completed successfully\n");
-      fprintf(stderr, "About to call fxNewFramebuffer...\n");
-   }
 
-   /* Nejc: Use new framebuffer infrastructure with renderbuffers */
-   fxMesa->glBuffer = fxNewFramebuffer(ctx, fxMesa->glVis);
-/* OLD   fxMesa->glBuffer = _mesa_create_framebuffer(fxMesa->glVis);*/
-
+   fxMesa->glBuffer = _mesa_create_framebuffer(fxMesa->glVis);
+#if 0
+/* XXX this is a complete mess :(
+ *	_mesa_add_soft_renderbuffers
+ *	driNewRenderbuffer
+ */
+					       GL_FALSE,	/* no software depth */
+					       stencilSize && !fxMesa->haveHwStencil,
+					       fxMesa->glVis->accumRedBits > 0,
+					       alphaSize && !fxMesa->haveHwAlpha);
+#endif
    if (!fxMesa->glBuffer) {
-      /* OLD str = "_mesa_create_framebuffer"; */
-      str = "fxNewFramebuffer";
+      str = "_mesa_create_framebuffer";
       goto errorhandler;
-   }
-
-   if (TDFX_DEBUG & VERBOSE_DRIVER) {
-      fprintf(stderr, "fxNewFramebuffer completed successfully\n");
    }
 
    glbTotNumCtx++;
@@ -854,18 +746,12 @@ errorhandler:
 
 /*
  * Function to set the new window size in the context (mainly for the Voodoo Rush)
- * Nejc: Updated to use new framebuffer infrastructure
  */
 void GLAPIENTRY
 fxMesaUpdateScreenSize(fxMesaContext fxMesa)
 {
    fxMesa->width = FX_grSstScreenWidth();
    fxMesa->height = FX_grSstScreenHeight();
-   
-   /* Nejc Update framebuffer size using new infrastructure */
-   if (fxMesa->glCtx) {
-      fxUpdateFramebufferSize(fxMesa->glCtx);
-   }
 }
 
 
@@ -1042,10 +928,8 @@ fxCloseHardware(void)
 {
    if (glbGlideInitialized) {
       if (glbTotNumCtx == 0) {
-         //Nejc - Added for openGl
-         grDisable(GR_OPENGL_MODE_EXT);
-	      grGlideShutdown();
-	      glbGlideInitialized = 0;
+	 grGlideShutdown();
+	 glbGlideInitialized = 0;
       }
    }
 }

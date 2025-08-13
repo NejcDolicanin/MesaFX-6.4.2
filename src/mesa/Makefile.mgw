@@ -118,15 +118,13 @@ UNLINK = rm -f $(1)
 
 include sources
 
-#Nejc DISABLED sse, since it causes problems
 ifeq ($(X86),1)
 CFLAGS += -DUSE_X86_ASM
 CFLAGS += -DUSE_MMX_ASM
-#CFLAGS += -DUSE_SSE_ASM
+CFLAGS += -DUSE_SSE_ASM
 CFLAGS += -DUSE_3DNOW_ASM
 #Nejc To prevent accidental use of sse2 (-msse2)
-CFLAGS += -mmmx -m3dnow
-#CFLAGS += -mmmx -msse -m3dnow
+CFLAGS += -mmmx -msse -m3dnow
 
 X86_SOURCES += $(X86_API)
 else

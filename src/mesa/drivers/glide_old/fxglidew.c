@@ -250,7 +250,11 @@ FX_grSstQueryHardware(GrHwConfiguration * config)
    END_BOARD_LOCK();
    return 1;
 }
+
+
+
 #else
+
 /*
  * Need this to provide at least one external definition.
  */
