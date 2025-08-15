@@ -29,7 +29,7 @@
 
 #include "glheader.h"
 
-#ifdef FX
+// #ifdef FX
 
 #include "imports.h"
 #include "mtypes.h"
@@ -1817,18 +1817,18 @@ fxMultipass_ColorSum (GLcontext *ctx, GLuint pass)
 }
 
 
-#else
+// #else
 
 
-/*
- * Need this to provide at least one external definition.
- */
+// /*
+//  * Need this to provide at least one external definition.
+//  */
 
-extern int gl_fx_dummy_function_tris(void);
-int
-gl_fx_dummy_function_tris(void)
-{
-   return 0;
-}
+// extern int gl_fx_dummy_function_tris(void);
+// int
+// gl_fx_dummy_function_tris(void)
+// {
+//    return 0;
+// }
 
-#endif /* FX */
+// #endif /* FX */

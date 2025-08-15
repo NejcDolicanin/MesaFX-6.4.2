@@ -38,7 +38,7 @@
 #include "conf.h"
 #endif
 
-#if defined(FX)
+//#if defined(FX)
 
 #include "hash.h"
 #include "fxdrv.h"
@@ -404,10 +404,6 @@ fxTMMoveInTM_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj,
    if (TDFX_DEBUG & VERBOSE_DRIVER) {
       fprintf(stderr, "fxTMMoveInTM_NoLock(%d)\n", tObj->Name);
    }
-
-/* NEJC SOF DEBUG*/
-fprintf(stderr, "fxTMMoveInTM_NoLock: start tex=%d\n", tObj->Name);
-
 
    fxMesa->stats.reqTexUpload++;
 
@@ -861,18 +857,18 @@ fxTMRestoreTextures_NoLock(fxMesaContext ctx)
    }
 }
 
-#else
+// #else
 
 
-/*
- * Need this to provide at least one external definition.
- */
+// /*
+//  * Need this to provide at least one external definition.
+//  */
 
-extern int gl_fx_dummy_function_texman(void);
-int
-gl_fx_dummy_function_texman(void)
-{
-   return 0;
-}
+// extern int gl_fx_dummy_function_texman(void);
+// int
+// gl_fx_dummy_function_texman(void)
+// {
+//    return 0;
+// }
 
-#endif /* FX */
+// #endif /* FX */

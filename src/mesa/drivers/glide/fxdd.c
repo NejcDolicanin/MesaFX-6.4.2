@@ -37,7 +37,7 @@
 #include "conf.h"
 #endif
 
-#if defined(FX)
+//#if defined(FX)
 
 #include "image.h"
 #include "mtypes.h"
@@ -2297,47 +2297,26 @@ void fxSetupDDPointers_PreContext(struct dd_function_table *functions, fxMesaCon
    /* functions->NewTextureObject = fxDDNewTextureObject; */
    /*functions->DeleteTexture = fxDDTexDel;*/
    /*functions->ChooseTextureFormat = fxDDChooseTextureFormat;*/
-   functions->FreeTexImageData = _mesa_free_texmemory; /*NEJC DO I NEED THIS???? Yes! without it, it crashes on GameExit*/
+   // functions->FreeTexImageData = _mesa_free_texmemory; /*NEJC DO I NEED THIS???? Yes! without it, it crashes on GameExit*/
 
-   /* NEJC WE NEED MORE!!!!!*/
 
    /* Set up essential texture functions that Mesa needs during context creation */
    /* Mesa calls NewTextureObject during _mesa_init_texture() to create default textures */
    /* fxInitTextureFuncs( struct dd_function_table *functions ) */
-   functions->BindTexture = fxDDTexBind;
-   functions->NewTextureObject = fxDDNewTextureObject;
-   functions->DeleteTexture = fxDDTexDel;
-   functions->TexEnv = fxDDTexEnv;
-   functions->TexParameter = fxDDTexParam;
-   functions->ChooseTextureFormat = fxDDChooseTextureFormat;
-   functions->TexImage1D = fxDDTexImage1D;
-   functions->TexSubImage1D = fxDDTexSubImage1D;
-   functions->TexImage2D = fxDDTexImage2D;
-   functions->TexSubImage2D = fxDDTexSubImage2D;
-   functions->IsTextureResident = fxDDIsTextureResident;
-   functions->CompressedTexImage2D = fxDDCompressedTexImage2D;
-   functions->CompressedTexSubImage2D = fxDDCompressedTexSubImage2D;
-   functions->UpdateTexturePalette = fxDDTexPalette;
-
-   /*
-   void tdfxInitTextureFuncs( struct dd_function_table *functions )
-   {
-      functions->BindTexture		= tdfxBindTexture;
-      functions->NewTextureObject		= tdfxNewTextureObject;
-      functions->DeleteTexture		= tdfxDeleteTexture;
-      functions->TexEnv			= tdfxTexEnv;
-      functions->TexParameter		= tdfxTexParameter;
-      functions->ChooseTextureFormat       = tdfxChooseTextureFormat;
-      functions->TexImage1D		= tdfxTexImage1D;
-      functions->TexSubImage1D		= tdfxTexSubImage1D;
-      functions->TexImage2D		= tdfxTexImage2D;
-      functions->TexSubImage2D		= tdfxTexSubImage2D;
-      functions->IsTextureResident		= tdfxIsTextureResident;
-      functions->CompressedTexImage2D	= tdfxCompressedTexImage2D;
-      functions->CompressedTexSubImage2D	= tdfxCompressedTexSubImage2D;
-      functions->UpdateTexturePalette      = tdfxUpdateTexturePalette;
-   }
-   */
+   // functions->BindTexture = fxDDTexBind;
+   // functions->NewTextureObject = fxDDNewTextureObject;
+   // functions->DeleteTexture = fxDDTexDel;
+   // functions->TexEnv = fxDDTexEnv;
+   // functions->TexParameter = fxDDTexParam;
+   // functions->ChooseTextureFormat = fxDDChooseTextureFormat;
+   // functions->TexImage1D = fxDDTexImage1D;
+   // functions->TexSubImage1D = fxDDTexSubImage1D;
+   // functions->TexImage2D = fxDDTexImage2D;
+   // functions->TexSubImage2D = fxDDTexSubImage2D;
+   // functions->IsTextureResident = fxDDIsTextureResident;
+   // functions->CompressedTexImage2D = fxDDCompressedTexImage2D;
+   // functions->CompressedTexSubImage2D = fxDDCompressedTexSubImage2D;
+   // functions->UpdateTexturePalette = fxDDTexPalette;
 }
 
 void fxSetupDDPointers(GLcontext *ctx)
@@ -2429,15 +2408,15 @@ void fxSetupDDPointers(GLcontext *ctx)
    fxDDUpdateDDPointers(ctx, _NEW_ALL);
 }
 
-#else
+// #else
 
-/*
- * Need this to provide at least one external definition.
- */
-extern int gl_fx_dummy_function_dd(void);
-int gl_fx_dummy_function_dd(void)
-{
-   return 0;
-}
+// /*
+//  * Need this to provide at least one external definition.
+//  */
+// extern int gl_fx_dummy_function_dd(void);
+// int gl_fx_dummy_function_dd(void)
+// {
+//    return 0;
+// }
 
-#endif /* FX */
+// #endif /* FX */

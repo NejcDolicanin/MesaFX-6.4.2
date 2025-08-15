@@ -37,7 +37,7 @@
 #include "conf.h"
 #endif
 
-#if defined(FX)
+//#if defined(FX)
 
 #include "fxdrv.h"
 #include "fxglidew.h"
@@ -348,16 +348,16 @@ void fxDDInitSpanFuncs(GLcontext *ctx)
 	swdd->SpanRenderFinish = fxSpanRenderFinish; /* END_BOARD_LOCK */
 }
 
-#else
+// #else
 
-/*
- * Need this to provide at least one external definition.
- */
+// /*
+//  * Need this to provide at least one external definition.
+//  */
 
-extern int gl_fx_dummy_function_span(void);
-int gl_fx_dummy_function_span(void)
-{
-	return 0;
-}
+// extern int gl_fx_dummy_function_span(void);
+// int gl_fx_dummy_function_span(void)
+// {
+// 	return 0;
+// }
 
-#endif /* FX */
+// #endif /* FX */

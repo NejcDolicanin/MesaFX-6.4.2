@@ -32,7 +32,7 @@
 #include "conf.h"
 #endif
 
-#if defined(FX)
+// #if defined(FX)
 
 #include "fxdrv.h"
 #include "fxglidew.h"
@@ -1683,15 +1683,15 @@ void fxWriteStencilPixels(GLcontext *ctx, struct gl_renderbuffer *rb,
    }
 }
 
-#else
+// #else
 
-/*
- * Need this to provide at least one external definition.
- */
-extern int gl_fx_dummy_function_renderbuffer(void);
-int gl_fx_dummy_function_renderbuffer(void)
-{
-   return 0;
-}
+// /*
+//  * Need this to provide at least one external definition.
+//  */
+// extern int gl_fx_dummy_function_renderbuffer(void);
+// int gl_fx_dummy_function_renderbuffer(void)
+// {
+//    return 0;
+// }
 
-#endif /* FX */
+// #endif /* FX */

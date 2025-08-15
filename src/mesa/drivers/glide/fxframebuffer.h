@@ -26,14 +26,14 @@
  *    Nejc Dolicanin - Updated for Mesa 6.4.2 framebuffer infrastructure
  */
 
-#ifndef FXFRAMEBUFFER_H
-#define FXFRAMEBUFFER_H
+// #ifndef FXFRAMEBUFFER_H
+// #define FXFRAMEBUFFER_H
 
 #ifdef HAVE_CONFIG_H
 #include "conf.h"
 #endif
 
-#if defined(FX)
+// #if defined(FX)
 
 #include "mtypes.h"
 
@@ -53,6 +53,6 @@ fxSetReadBuffer(GLcontext *ctx, GLenum buffer);
 extern void
 fxSetDrawBuffer(GLcontext *ctx, GLenum buffer);
 
-#endif /* FX */
+// #endif /* FX */
 
-#endif /* FXFRAMEBUFFER_H */
+// #endif /* FXFRAMEBUFFER_H */

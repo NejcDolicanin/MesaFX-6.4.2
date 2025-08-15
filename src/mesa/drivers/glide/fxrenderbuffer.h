@@ -26,14 +26,14 @@
  *    Nejc Dolicanin - Updated for Mesa 6.4.2 renderbuffer infrastructure
  */
 
-#ifndef FXRENDERBUFFER_H
-#define FXRENDERBUFFER_H
+// #ifndef FXRENDERBUFFER_H
+// #define FXRENDERBUFFER_H
 
 #ifdef HAVE_CONFIG_H
 #include "conf.h"
 #endif
 
-#if defined(FX)
+//#if defined(FX)
 
 #include "mtypes.h"
 
@@ -165,6 +165,6 @@ extern void fxWriteStencilPixels(GLcontext *ctx, struct gl_renderbuffer *rb,
 //                                      GLuint count, const GLint x[], const GLint y[],
 //                                      const void *value, const GLubyte *mask);
 
-#endif /* FX */
+// #endif /* FX */
 
-#endif /* FXRENDERBUFFER_H */
+// #endif /* FXRENDERBUFFER_H */

@@ -37,7 +37,7 @@
 #include "conf.h"
 #endif
 
-#if defined(FX)
+//#if defined(FX)
 #include "fxdrv.h"
 #include "fxutil.h"
 #include "fxframebuffer.h"
@@ -812,9 +812,8 @@ fxMesaCreateContext(GLuint win,
     * (the texture functions are especially important)
     */
    _mesa_init_driver_functions(&functions);
-
-   /* Set up FX-specific driver functions BEFORE creating context */
    fxSetupDDPointers_PreContext(&functions, fxMesa);
+   fxInitTextureFuncs(&functions);
 
    /* NEJC - HOW TDFX inits*/
    /* Init default driver functions then plug in our tdfx-specific functions
@@ -1154,15 +1153,15 @@ fxCloseHardware(void)
    }
 }
 
-#else
+// #else
 
-/*
- * Need this to provide at least one external definition.
- */
-extern int gl_fx_dummy_function_api(void);
-int gl_fx_dummy_function_api(void)
-{
-   return 0;
-}
+// /*
+//  * Need this to provide at least one external definition.
+//  */
+// extern int gl_fx_dummy_function_api(void);
+// int gl_fx_dummy_function_api(void)
+// {
+//    return 0;
+// }
 
-#endif /* FX */
+// #endif /* FX */
