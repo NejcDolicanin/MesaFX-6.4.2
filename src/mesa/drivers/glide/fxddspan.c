@@ -348,14 +348,6 @@ void fxDDInitSpanFuncs(GLcontext *ctx)
 	swdd->SpanRenderFinish = fxSpanRenderFinish; /* END_BOARD_LOCK */
 }
 
-void fxSetupDDSpanPointers(GLcontext *ctx)
-{
-	/* Individual span functions are set up per-renderbuffer in fxSetSpanFunctions() */
-
-	/* Keep render start/finish for compatibility */
-	fxDDInitSpanFuncs(ctx);
-}
-
 #else
 
 /*

@@ -3,6 +3,12 @@
         "fxhelpers.h": "c",
         "renderbuffer.h": "c",
         "framebuffer.h": "c",
-        "fxrenderbuffer.h": "c"
+        "fxrenderbuffer.h": "c",
+        "swrast.h": "c",
+        "enums.h": "c",
+        "tnl.h": "c",
+        "t_context.h": "c",
+        "tdfx_dd.h": "c",
+        "glheader.h": "c"
     }
 }

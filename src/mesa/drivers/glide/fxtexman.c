@@ -405,6 +405,10 @@ fxTMMoveInTM_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj,
       fprintf(stderr, "fxTMMoveInTM_NoLock(%d)\n", tObj->Name);
    }
 
+/* NEJC SOF DEBUG*/
+fprintf(stderr, "fxTMMoveInTM_NoLock: start tex=%d\n", tObj->Name);
+
+
    fxMesa->stats.reqTexUpload++;
 
    if (!ti->validated) {

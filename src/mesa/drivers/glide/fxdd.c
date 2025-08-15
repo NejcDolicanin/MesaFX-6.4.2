@@ -2272,33 +2272,73 @@ fxDDUpdateDDPointers(GLcontext *ctx, GLuint new_state)
  * Set up essential driver functions BEFORE context creation
  * This is called from fxapi.c before _mesa_create_context()
  */
-// void fxSetupDDPointers_PreContext(struct dd_function_table *functions, fxMesaContext fxMesa)
-// {
-//    if (TDFX_DEBUG & VERBOSE_DRIVER)
-//    {
-//       fprintf(stderr, "fxSetupDDPointers_PreContext()\n");
-//    }
+void fxSetupDDPointers_PreContext(struct dd_function_table *functions, fxMesaContext fxMesa)
+{
+   if (TDFX_DEBUG & VERBOSE_DRIVER)
+   {
+      fprintf(stderr, "fxSetupDDPointers_PreContext()\n");
+   }
 
-//    /* Set up essential framebuffer/renderbuffer functions that Mesa needs during context creation */
-//    fxInitFramebufferFuncs(functions);
+   /* Set up essential framebuffer/renderbuffer functions that Mesa needs during context creation */
+   fxInitFramebufferFuncs(functions);
 
-//    /* Set up other essential functions that might be needed during context creation */
-//    functions->GetString = fxDDGetString;
-//    functions->UpdateState = fxDDUpdateDDPointers;
+   /* Set up other essential functions that might be needed during context creation */
+   functions->GetString = fxDDGetString;
+   functions->UpdateState = fxDDUpdateDDPointers;
 
-//    /* Set up essential span functions that Mesa 6.3+ needs during context creation */
-//    /* Note: We can't call fxSetupDDSpanPointers() here because it needs a GLcontext,
-//     * but we can set up the basic span infrastructure that Mesa needs */
-//    functions->GetBufferSize = fxDDGetBufferSize;
-//    functions->Viewport = fxDDViewport;
+   /* Set up essential span functions that Mesa 6.3+ needs during context creation */
+   /* Note: We can't call fxSetupDDSpanPointers() here because it needs a GLcontext,
+    * but we can set up the basic span infrastructure that Mesa needs */
+   functions->GetBufferSize = fxDDGetBufferSize;
+   functions->Viewport = fxDDViewport;
 
-//    /* Set up essential texture functions that Mesa needs during context creation */
-//    /* Mesa calls NewTextureObject during _mesa_init_texture() to create default textures */
-//    functions->NewTextureObject = fxDDNewTextureObject;
-//    functions->DeleteTexture = fxDDTexDel;
-//    functions->ChooseTextureFormat = fxDDChooseTextureFormat;
-//    functions->FreeTexImageData = _mesa_free_texmemory;
-// }
+   /* Set up essential texture functions that Mesa needs during context creation */
+   /* Mesa calls NewTextureObject during _mesa_init_texture() to create default textures */
+   /* functions->NewTextureObject = fxDDNewTextureObject; */
+   /*functions->DeleteTexture = fxDDTexDel;*/
+   /*functions->ChooseTextureFormat = fxDDChooseTextureFormat;*/
+   functions->FreeTexImageData = _mesa_free_texmemory; /*NEJC DO I NEED THIS???? Yes! without it, it crashes on GameExit*/
+
+   /* NEJC WE NEED MORE!!!!!*/
+
+   /* Set up essential texture functions that Mesa needs during context creation */
+   /* Mesa calls NewTextureObject during _mesa_init_texture() to create default textures */
+   /* fxInitTextureFuncs( struct dd_function_table *functions ) */
+   functions->BindTexture = fxDDTexBind;
+   functions->NewTextureObject = fxDDNewTextureObject;
+   functions->DeleteTexture = fxDDTexDel;
+   functions->TexEnv = fxDDTexEnv;
+   functions->TexParameter = fxDDTexParam;
+   functions->ChooseTextureFormat = fxDDChooseTextureFormat;
+   functions->TexImage1D = fxDDTexImage1D;
+   functions->TexSubImage1D = fxDDTexSubImage1D;
+   functions->TexImage2D = fxDDTexImage2D;
+   functions->TexSubImage2D = fxDDTexSubImage2D;
+   functions->IsTextureResident = fxDDIsTextureResident;
+   functions->CompressedTexImage2D = fxDDCompressedTexImage2D;
+   functions->CompressedTexSubImage2D = fxDDCompressedTexSubImage2D;
+   functions->UpdateTexturePalette = fxDDTexPalette;
+
+   /*
+   void tdfxInitTextureFuncs( struct dd_function_table *functions )
+   {
+      functions->BindTexture		= tdfxBindTexture;
+      functions->NewTextureObject		= tdfxNewTextureObject;
+      functions->DeleteTexture		= tdfxDeleteTexture;
+      functions->TexEnv			= tdfxTexEnv;
+      functions->TexParameter		= tdfxTexParameter;
+      functions->ChooseTextureFormat       = tdfxChooseTextureFormat;
+      functions->TexImage1D		= tdfxTexImage1D;
+      functions->TexSubImage1D		= tdfxTexSubImage1D;
+      functions->TexImage2D		= tdfxTexImage2D;
+      functions->TexSubImage2D		= tdfxTexSubImage2D;
+      functions->IsTextureResident		= tdfxIsTextureResident;
+      functions->CompressedTexImage2D	= tdfxCompressedTexImage2D;
+      functions->CompressedTexSubImage2D	= tdfxCompressedTexSubImage2D;
+      functions->UpdateTexturePalette      = tdfxUpdateTexturePalette;
+   }
+   */
+}
 
 void fxSetupDDPointers(GLcontext *ctx)
 {
@@ -2311,6 +2351,7 @@ void fxSetupDDPointers(GLcontext *ctx)
    }
 
    ctx->Driver.UpdateState = fxDDUpdateDDPointers;
+
    ctx->Driver.GetString = fxDDGetString;
    ctx->Driver.ClearIndex = NULL;
    ctx->Driver.ClearColor = fxDDClearColor;
@@ -2318,6 +2359,7 @@ void fxSetupDDPointers(GLcontext *ctx)
    ctx->Driver.DrawBuffer = fxDDSetDrawBuffer;
    ctx->Driver.GetBufferSize = fxDDGetBufferSize;
    ctx->Driver.Viewport = fxDDViewport;
+
    switch (fxMesa->colDepth)
    {
    case 15:
@@ -2336,8 +2378,10 @@ void fxSetupDDPointers(GLcontext *ctx)
       ctx->Driver.Bitmap = fxDDDrawBitmap4;
       break;
    }
+
+   /* Nejc - Half here are for textures ?????*/
    ctx->Driver.Finish = fxDDFinish;
-   ctx->Driver.Flush = NULL;
+   // ctx->Driver.Flush = NULL;
    ctx->Driver.ChooseTextureFormat = fxDDChooseTextureFormat;
    ctx->Driver.NewTextureObject = fxDDNewTextureObject;
    ctx->Driver.TexImage1D = fxDDTexImage1D;
@@ -2365,6 +2409,7 @@ void fxSetupDDPointers(GLcontext *ctx)
    ctx->Driver.CullFace = fxDDCullFace;
    ctx->Driver.ShadeModel = fxDDShadeModel;
    ctx->Driver.Enable = fxDDEnable;
+
    if (fxMesa->haveHwStencil)
    {
       ctx->Driver.StencilFunc = fxDDStencilFunc;
@@ -2372,9 +2417,15 @@ void fxSetupDDPointers(GLcontext *ctx)
       ctx->Driver.StencilOp = fxDDStencilOp;
    }
 
+   /* Swrast hooks for imaging extensions:
+    */
+   ctx->Driver.CopyColorTable = _swrast_CopyColorTable;
+   ctx->Driver.CopyColorSubTable = _swrast_CopyColorSubTable;
+   ctx->Driver.CopyConvolutionFilter1D = _swrast_CopyConvolutionFilter1D;
+   ctx->Driver.CopyConvolutionFilter2D = _swrast_CopyConvolutionFilter2D;
+
    /* Nejc: Initialize framebuffer functions for Mesa 6.3+ */
    fxInitFramebufferFuncs(&ctx->Driver);
-
    fxDDUpdateDDPointers(ctx, _NEW_ALL);
 }
 

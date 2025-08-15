@@ -58,7 +58,7 @@
 #include "fxglidew.h"
 
 #include "math/m_vector.h"
-/* Nejc Added new framebuffer and renderbuffer includes */
+/* New framebuffer and renderbuffer includes */
 #include "renderbuffer.h"
 #include "framebuffer.h"
 
@@ -552,7 +552,7 @@ struct tfxMesaContext
 
 extern void fxSetupFXUnits(GLcontext *);
 extern void fxSetupDDPointers(GLcontext *);
-/* NEJC DELETE extern void fxSetupDDPointers_PreContext(struct dd_function_table *functions, fxMesaContext fxMesa); */
+extern void fxSetupDDPointers_PreContext(struct dd_function_table *functions, fxMesaContext fxMesa);
 
 /* fxvb.c:
  */
@@ -576,7 +576,6 @@ extern void fxDDChooseRenderState(GLcontext * ctx);
 
 
 extern void fxUpdateDDSpanPointers(GLcontext *);
-extern void fxSetupDDSpanPointers(GLcontext *);
 
 extern void fxPrintTextureData(tfxTexInfo * ti);
 
@@ -804,12 +803,12 @@ fxInitFramebufferFuncs(struct dd_function_table *functions);
 
 /* run-time debugging */
 #ifndef FX_DEBUG
-#define FX_DEBUG 0
+#define FX_DEBUG 1
 #endif
 #if FX_DEBUG
 extern int TDFX_DEBUG;
 #else
-#define TDFX_DEBUG		0
+#define TDFX_DEBUG		1
 #endif
 
 /* dirty hacks */
