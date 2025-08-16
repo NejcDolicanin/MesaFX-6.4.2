@@ -2097,12 +2097,14 @@ fx_check_IsInHardware(GLcontext *ctx)
 
    if (ctx->Stencil.Enabled && !fxMesa->haveHwStencil)
    {
+      fprintf(stderr, "fx_check_IsInHardware: FX_FALLBACK_STENCIL fallback\n");
       return FX_FALLBACK_STENCIL;
    }
 
    if (ctx->DrawBuffer->_ColorDrawBufferMask[0] != BUFFER_BIT_FRONT_LEFT &&
        ctx->DrawBuffer->_ColorDrawBufferMask[0] != BUFFER_BIT_BACK_LEFT)
    {
+      fprintf(stderr, "fx_check_IsInHardware: FX_FALLBACK_DRAW_BUFFER fallback\n");
       return FX_FALLBACK_DRAW_BUFFER;
    }
 
@@ -2166,12 +2168,18 @@ fx_check_IsInHardware(GLcontext *ctx)
 
    /* we can only do 1D/2D textures */
    if (ctx->Texture.Unit[0]._ReallyEnabled & ~(TEXTURE_1D_BIT | TEXTURE_2D_BIT))
+   {
+      fprintf(stderr, "fx_check_IsInHardware: FX_FALLBACK_TEXTURE_MAP fallback\n");
       return FX_FALLBACK_TEXTURE_MAP;
+   }
 
    if (fxMesa->haveTwoTMUs)
    {
       if (ctx->Texture.Unit[1]._ReallyEnabled & ~(TEXTURE_1D_BIT | TEXTURE_2D_BIT))
+      {
+         fprintf(stderr, "fx_check_IsInHardware: FX_FALLBACK_TEXTURE_MAP fallback\n");
          return FX_FALLBACK_TEXTURE_MAP;
+      }
 
       if (ctx->Texture.Unit[0]._ReallyEnabled)
       {
@@ -2225,7 +2233,11 @@ fx_check_IsInHardware(GLcontext *ctx)
              (ctx->Texture.Unit[0].EnvMode != GL_REPLACE))
          { /* q2, seems ok... */
             if (TDFX_DEBUG & VERBOSE_DRIVER)
+            {
                fprintf(stderr, "fx_check_IsInHardware: unsupported multitex env mode\n");
+            }
+
+            fprintf(stderr, "fx_check_IsInHardware: unsupported multitex env mode\n");
             return FX_FALLBACK_TEXTURE_MULTI;
          }
       }
@@ -2235,6 +2247,7 @@ fx_check_IsInHardware(GLcontext *ctx)
       /* we have just one texture unit */
       if (ctx->Texture._EnabledUnits > 0x1)
       {
+         fprintf(stderr, "fx_check_IsInHardware: FX_FALLBACK_TEXTURE_MULTI fallback\n");
          return FX_FALLBACK_TEXTURE_MULTI;
       }
 

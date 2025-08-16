@@ -15,6 +15,7 @@
         "fxglidew.h": "c",
         "hash.h": "c",
         "m_translate.h": "c",
-        "swrast_setup.h": "c"
+        "swrast_setup.h": "c",
+        "stdlib.h": "c"
     }
 }

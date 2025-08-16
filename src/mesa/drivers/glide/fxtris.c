@@ -1491,6 +1491,23 @@ void fxDDChooseRenderState(GLcontext *ctx)
    GLuint flags = ctx->_TriangleCaps;
    GLuint index = 0;
 
+   /* Nejc Quake engine - Strip features that cause software fallbacks on Voodoo hardware */
+   /* Request for anti-aliased points (smooth edges on rendered points). */
+   if (flags & DD_POINT_SMOOTH)
+   {
+      ctx->Point.SmoothFlag = GL_FALSE;
+      ctx->_TriangleCaps &= ~DD_POINT_SMOOTH;
+      flags &= ~DD_POINT_SMOOTH;
+   }
+   /* Request for polygon smoothing (anti-aliased triangles, sometimes called GL_POLYGON_SMOOTH).*/
+   /* if (flags & DD_TRI_SMOOTH)
+    {
+       ctx->Polygon.SmoothFlag = GL_FALSE;
+       ctx->_TriangleCaps &= ~DD_TRI_SMOOTH;
+       flags &= ~DD_TRI_SMOOTH;
+    }
+   */
+
    if (flags & (ANY_FALLBACK_FLAGS | ANY_RASTER_FLAGS))
    {
       if (flags & ANY_RASTER_FLAGS)
@@ -1585,21 +1602,21 @@ void fxDDChooseRenderState(GLcontext *ctx)
       fx_render_tab_verts[0] = fx_render_vb_points;
       fx_render_tab_elts[0] = fx_render_points_elts;
    }
-}
-
-/**********************************************************************/
-/*                Runtime render state and callbacks                  */
-/**********************************************************************/
-
-static void fxRunPipeline(GLcontext *ctx)
-{
-   fxMesaContext fxMesa = FX_CONTEXT(ctx);
-   GLuint new_gl_state = fxMesa->new_gl_state;
-
-   if (TDFX_DEBUG & VERBOSE_PIPELINE)
-   {
-      fprintf(stderr, "fxRunPipeline()\n");
    }
+
+   /**********************************************************************/
+   /*                Runtime render state and callbacks                  */
+   /**********************************************************************/
+
+   static void fxRunPipeline(GLcontext *ctx)
+   {
+      fxMesaContext fxMesa = FX_CONTEXT(ctx);
+      GLuint new_gl_state = fxMesa->new_gl_state;
+
+      if (TDFX_DEBUG & VERBOSE_PIPELINE)
+      {
+         fprintf(stderr, "fxRunPipeline()\n");
+      }
 
 #if 0
    /* Recalculate fog table on projection matrix changes.  This used to
@@ -1609,268 +1626,268 @@ static void fxRunPipeline(GLcontext *ctx)
       fxMesa->new_state |= FX_NEW_FOG;
 #endif
 
-   if (new_gl_state & _FX_NEW_IS_IN_HARDWARE)
-      fxCheckIsInHardware(ctx);
+      if (new_gl_state & _FX_NEW_IS_IN_HARDWARE)
+         fxCheckIsInHardware(ctx);
 
-   if (fxMesa->new_state)
-      fxSetupFXUnits(ctx);
+      if (fxMesa->new_state)
+         fxSetupFXUnits(ctx);
 
-   if (!fxMesa->fallback)
-   {
-      if (new_gl_state & _FX_NEW_RENDERSTATE)
-         fxDDChooseRenderState(ctx);
-
-      if (new_gl_state & _FX_NEW_SETUP_FUNCTION)
-         fxChooseVertexState(ctx);
-   }
-
-   if (new_gl_state & _NEW_TEXTURE)
-   {
-      struct gl_texture_unit *t0 = &ctx->Texture.Unit[fxMesa->tmu_source[0]];
-      struct gl_texture_unit *t1 = &ctx->Texture.Unit[fxMesa->tmu_source[1]];
-
-      if (t0->_Current && FX_TEXTURE_DATA(t0))
+      if (!fxMesa->fallback)
       {
-         fxMesa->s0scale = FX_TEXTURE_DATA(t0)->sScale;
-         fxMesa->t0scale = FX_TEXTURE_DATA(t0)->tScale;
-         fxMesa->inv_s0scale = 1.0F / fxMesa->s0scale;
-         fxMesa->inv_t0scale = 1.0F / fxMesa->t0scale;
+         if (new_gl_state & _FX_NEW_RENDERSTATE)
+            fxDDChooseRenderState(ctx);
+
+         if (new_gl_state & _FX_NEW_SETUP_FUNCTION)
+            fxChooseVertexState(ctx);
       }
 
-      if (t1->_Current && FX_TEXTURE_DATA(t1))
+      if (new_gl_state & _NEW_TEXTURE)
       {
-         fxMesa->s1scale = FX_TEXTURE_DATA(t1)->sScale;
-         fxMesa->t1scale = FX_TEXTURE_DATA(t1)->tScale;
-         fxMesa->inv_s1scale = 1.0F / fxMesa->s1scale;
-         fxMesa->inv_t1scale = 1.0F / fxMesa->t1scale;
-      }
-   }
+         struct gl_texture_unit *t0 = &ctx->Texture.Unit[fxMesa->tmu_source[0]];
+         struct gl_texture_unit *t1 = &ctx->Texture.Unit[fxMesa->tmu_source[1]];
 
-   fxMesa->new_gl_state = 0;
-
-   _tnl_run_pipeline(ctx);
-}
-
-/* Always called between RenderStart and RenderFinish --> We already
- * hold the lock.
- */
-static void fxRasterPrimitive(GLcontext *ctx, GLenum prim)
-{
-   fxMesaContext fxMesa = FX_CONTEXT(ctx);
-
-   fxMesa->raster_primitive = prim;
-
-   fxSetupCull(ctx);
-}
-
-/* Determine the rasterized primitive when not drawing unfilled
- * polygons.
- */
-static void fxRenderPrimitive(GLcontext *ctx, GLenum prim)
-{
-   fxMesaContext fxMesa = FX_CONTEXT(ctx);
-   GLuint rprim = reduced_prim[prim];
-
-   fxMesa->render_primitive = prim;
-
-   if (rprim == GL_TRIANGLES && (ctx->_TriangleCaps & DD_TRI_UNFILLED))
-      return;
-
-   if (fxMesa->raster_primitive != rprim)
-   {
-      fxRasterPrimitive(ctx, rprim);
-   }
-}
-
-static void fxRenderFinish(GLcontext *ctx)
-{
-   fxMesaContext fxMesa = FX_CONTEXT(ctx);
-
-   if (fxMesa->render_index & FX_FALLBACK_BIT)
-      _swrast_flush(ctx);
-}
-
-/**********************************************************************/
-/*               Manage total rasterization fallbacks                 */
-/**********************************************************************/
-
-static char *fallbackStrings[] = {
-    "3D/Rect/Cube Texture map",
-    "glDrawBuffer(GL_FRONT_AND_BACK)",
-    "Separate specular color",
-    "glEnable/Disable(GL_STENCIL_TEST)",
-    "glRenderMode(selection or feedback)",
-    "glLogicOp()",
-    "Texture env mode",
-    "Texture border",
-    "glColorMask",
-    "blend mode",
-    "multitex"};
-
-static char *getFallbackString(GLuint bit)
-{
-   int i = 0;
-   while (bit > 1)
-   {
-      i++;
-      bit >>= 1;
-   }
-   return fallbackStrings[i];
-}
-
-void fxCheckIsInHardware(GLcontext *ctx)
-{
-   fxMesaContext fxMesa = FX_CONTEXT(ctx);
-   TNLcontext *tnl = TNL_CONTEXT(ctx);
-   GLuint oldfallback = fxMesa->fallback;
-   GLuint newfallback = fxMesa->fallback = fx_check_IsInHardware(ctx);
-
-   if (newfallback)
-   {
-      if (oldfallback == 0)
-      {
-         if (fxMesa->verbose)
+         if (t0->_Current && FX_TEXTURE_DATA(t0))
          {
-            fprintf(stderr, "Voodoo ! enter SW 0x%08x %s\n", newfallback, getFallbackString(newfallback));
+            fxMesa->s0scale = FX_TEXTURE_DATA(t0)->sScale;
+            fxMesa->t0scale = FX_TEXTURE_DATA(t0)->tScale;
+            fxMesa->inv_s0scale = 1.0F / fxMesa->s0scale;
+            fxMesa->inv_t0scale = 1.0F / fxMesa->t0scale;
          }
-         _swsetup_Wakeup(ctx);
+
+         if (t1->_Current && FX_TEXTURE_DATA(t1))
+         {
+            fxMesa->s1scale = FX_TEXTURE_DATA(t1)->sScale;
+            fxMesa->t1scale = FX_TEXTURE_DATA(t1)->tScale;
+            fxMesa->inv_s1scale = 1.0F / fxMesa->s1scale;
+            fxMesa->inv_t1scale = 1.0F / fxMesa->t1scale;
+         }
+      }
+
+      fxMesa->new_gl_state = 0;
+
+      _tnl_run_pipeline(ctx);
+   }
+
+   /* Always called between RenderStart and RenderFinish --> We already
+    * hold the lock.
+    */
+   static void fxRasterPrimitive(GLcontext *ctx, GLenum prim)
+   {
+      fxMesaContext fxMesa = FX_CONTEXT(ctx);
+
+      fxMesa->raster_primitive = prim;
+
+      fxSetupCull(ctx);
+   }
+
+   /* Determine the rasterized primitive when not drawing unfilled
+    * polygons.
+    */
+   static void fxRenderPrimitive(GLcontext *ctx, GLenum prim)
+   {
+      fxMesaContext fxMesa = FX_CONTEXT(ctx);
+      GLuint rprim = reduced_prim[prim];
+
+      fxMesa->render_primitive = prim;
+
+      if (rprim == GL_TRIANGLES && (ctx->_TriangleCaps & DD_TRI_UNFILLED))
+         return;
+
+      if (fxMesa->raster_primitive != rprim)
+      {
+         fxRasterPrimitive(ctx, rprim);
       }
    }
-   else
+
+   static void fxRenderFinish(GLcontext *ctx)
    {
-      if (oldfallback)
-      {
+      fxMesaContext fxMesa = FX_CONTEXT(ctx);
+
+      if (fxMesa->render_index & FX_FALLBACK_BIT)
          _swrast_flush(ctx);
-         tnl->Driver.Render.Start = fxCheckTexSizes;
-         tnl->Driver.Render.Finish = fxRenderFinish;
-         tnl->Driver.Render.PrimitiveNotify = fxRenderPrimitive;
-         tnl->Driver.Render.ClippedPolygon = _tnl_RenderClippedPolygon;
-         tnl->Driver.Render.ClippedLine = _tnl_RenderClippedLine;
-         tnl->Driver.Render.PrimTabVerts = _tnl_render_tab_verts;
-         tnl->Driver.Render.PrimTabElts = _tnl_render_tab_elts;
-         tnl->Driver.Render.ResetLineStipple = _swrast_ResetLineStipple;
-         tnl->Driver.Render.BuildVertices = fxBuildVertices;
-         fxChooseVertexState(ctx);
-         fxDDChooseRenderState(ctx);
-         if (fxMesa->verbose)
+   }
+
+   /**********************************************************************/
+   /*               Manage total rasterization fallbacks                 */
+   /**********************************************************************/
+
+   static char *fallbackStrings[] = {
+       "3D/Rect/Cube Texture map",
+       "glDrawBuffer(GL_FRONT_AND_BACK)",
+       "Separate specular color",
+       "glEnable/Disable(GL_STENCIL_TEST)",
+       "glRenderMode(selection or feedback)",
+       "glLogicOp()",
+       "Texture env mode",
+       "Texture border",
+       "glColorMask",
+       "blend mode",
+       "multitex"};
+
+   static char *getFallbackString(GLuint bit)
+   {
+      int i = 0;
+      while (bit > 1)
+      {
+         i++;
+         bit >>= 1;
+      }
+      return fallbackStrings[i];
+   }
+
+   void fxCheckIsInHardware(GLcontext *ctx)
+   {
+      fxMesaContext fxMesa = FX_CONTEXT(ctx);
+      TNLcontext *tnl = TNL_CONTEXT(ctx);
+      GLuint oldfallback = fxMesa->fallback;
+      GLuint newfallback = fxMesa->fallback = fx_check_IsInHardware(ctx);
+
+      if (newfallback)
+      {
+         if (oldfallback == 0)
          {
-            fprintf(stderr, "Voodoo ! leave SW 0x%08x %s\n", oldfallback, getFallbackString(oldfallback));
+            if (fxMesa->verbose)
+            {
+               fprintf(stderr, "Voodoo ! enter SW 0x%08x %s\n", newfallback, getFallbackString(newfallback));
+            }
+            _swsetup_Wakeup(ctx);
          }
       }
+      else
+      {
+         if (oldfallback)
+         {
+            _swrast_flush(ctx);
+            tnl->Driver.Render.Start = fxCheckTexSizes;
+            tnl->Driver.Render.Finish = fxRenderFinish;
+            tnl->Driver.Render.PrimitiveNotify = fxRenderPrimitive;
+            tnl->Driver.Render.ClippedPolygon = _tnl_RenderClippedPolygon;
+            tnl->Driver.Render.ClippedLine = _tnl_RenderClippedLine;
+            tnl->Driver.Render.PrimTabVerts = _tnl_render_tab_verts;
+            tnl->Driver.Render.PrimTabElts = _tnl_render_tab_elts;
+            tnl->Driver.Render.ResetLineStipple = _swrast_ResetLineStipple;
+            tnl->Driver.Render.BuildVertices = fxBuildVertices;
+            fxChooseVertexState(ctx);
+            fxDDChooseRenderState(ctx);
+            if (fxMesa->verbose)
+            {
+               fprintf(stderr, "Voodoo ! leave SW 0x%08x %s\n", oldfallback, getFallbackString(oldfallback));
+            }
+         }
+         tnl->Driver.Render.Multipass = NULL;
+         if (HAVE_SPEC && NEED_SECONDARY_COLOR(ctx))
+         {
+            tnl->Driver.Render.Multipass = fxMultipass_ColorSum;
+            /* obey stencil, but do not change it */
+            fxMesa->multipass = GL_TRUE;
+            if (fxMesa->unitsState.stencilEnabled)
+            {
+               fxMesa->new_state |= FX_NEW_STENCIL;
+            }
+         }
+      }
+   }
+
+   void fxDDInitTriFuncs(GLcontext *ctx)
+   {
+      TNLcontext *tnl = TNL_CONTEXT(ctx);
+      static int firsttime = 1;
+
+      if (firsttime)
+      {
+         init_rast_tab();
+         firsttime = 0;
+      }
+
+      tnl->Driver.RunPipeline = fxRunPipeline;
+      tnl->Driver.Render.Start = fxCheckTexSizes;
+      tnl->Driver.Render.Finish = fxRenderFinish;
+      tnl->Driver.Render.PrimitiveNotify = fxRenderPrimitive;
+      tnl->Driver.Render.ClippedPolygon = _tnl_RenderClippedPolygon;
+      tnl->Driver.Render.ClippedLine = _tnl_RenderClippedLine;
+      tnl->Driver.Render.PrimTabVerts = _tnl_render_tab_verts;
+      tnl->Driver.Render.PrimTabElts = _tnl_render_tab_elts;
+      tnl->Driver.Render.ResetLineStipple = _swrast_ResetLineStipple;
+      tnl->Driver.Render.BuildVertices = fxBuildVertices;
       tnl->Driver.Render.Multipass = NULL;
-      if (HAVE_SPEC && NEED_SECONDARY_COLOR(ctx))
-      {
-         tnl->Driver.Render.Multipass = fxMultipass_ColorSum;
-         /* obey stencil, but do not change it */
-         fxMesa->multipass = GL_TRUE;
-         if (fxMesa->unitsState.stencilEnabled)
-         {
-            fxMesa->new_state |= FX_NEW_STENCIL;
-         }
-      }
+
+      (void)fx_print_vertex;
    }
-}
 
-void fxDDInitTriFuncs(GLcontext *ctx)
-{
-   TNLcontext *tnl = TNL_CONTEXT(ctx);
-   static int firsttime = 1;
-
-   if (firsttime)
+   /* [dBorca] Hack alert:
+    * doesn't work with blending.
+    */
+   static GLboolean
+   fxMultipass_ColorSum(GLcontext *ctx, GLuint pass)
    {
-      init_rast_tab();
-      firsttime = 0;
-   }
+      fxMesaContext fxMesa = FX_CONTEXT(ctx);
+      tfxUnitsState *us = &fxMesa->unitsState;
 
-   tnl->Driver.RunPipeline = fxRunPipeline;
-   tnl->Driver.Render.Start = fxCheckTexSizes;
-   tnl->Driver.Render.Finish = fxRenderFinish;
-   tnl->Driver.Render.PrimitiveNotify = fxRenderPrimitive;
-   tnl->Driver.Render.ClippedPolygon = _tnl_RenderClippedPolygon;
-   tnl->Driver.Render.ClippedLine = _tnl_RenderClippedLine;
-   tnl->Driver.Render.PrimTabVerts = _tnl_render_tab_verts;
-   tnl->Driver.Render.PrimTabElts = _tnl_render_tab_elts;
-   tnl->Driver.Render.ResetLineStipple = _swrast_ResetLineStipple;
-   tnl->Driver.Render.BuildVertices = fxBuildVertices;
-   tnl->Driver.Render.Multipass = NULL;
+      static int t0 = 0;
+      static int t1 = 0;
 
-   (void)fx_print_vertex;
-}
-
-/* [dBorca] Hack alert:
- * doesn't work with blending.
- */
-static GLboolean
-fxMultipass_ColorSum(GLcontext *ctx, GLuint pass)
-{
-   fxMesaContext fxMesa = FX_CONTEXT(ctx);
-   tfxUnitsState *us = &fxMesa->unitsState;
-
-   static int t0 = 0;
-   static int t1 = 0;
-
-   switch (pass)
-   {
-   case 1: /* first pass: the TEXTURED triangles are drawn */
-      /* set stencil's real values */
-      fxMesa->multipass = GL_FALSE;
-      if (us->stencilEnabled)
+      switch (pass)
       {
-         fxSetupStencil(ctx);
-      }
-      /* save per-pass data */
-      fxMesa->restoreUnitsState = *us;
-      /* turn off texturing */
-      t0 = ctx->Texture.Unit[0]._ReallyEnabled;
-      t1 = ctx->Texture.Unit[1]._ReallyEnabled;
-      ctx->Texture.Unit[0]._ReallyEnabled = 0;
-      ctx->Texture.Unit[1]._ReallyEnabled = 0;
-      /* SUM the colors */
-      fxDDBlendEquationSeparate(ctx, GL_FUNC_ADD, GL_FUNC_ADD);
-      fxDDBlendFuncSeparate(ctx, GL_ONE, GL_ONE, GL_ZERO, GL_ONE);
-      fxDDEnable(ctx, GL_BLEND, GL_TRUE);
-      /* make sure we draw only where we want to */
-      if (us->depthTestEnabled)
-      {
-         switch (us->depthTestFunc)
+      case 1: /* first pass: the TEXTURED triangles are drawn */
+         /* set stencil's real values */
+         fxMesa->multipass = GL_FALSE;
+         if (us->stencilEnabled)
          {
-         default:
-            fxDDDepthFunc(ctx, GL_EQUAL);
-         case GL_NEVER:
-         case GL_ALWAYS:;
+            fxSetupStencil(ctx);
          }
-         fxDDDepthMask(ctx, GL_FALSE);
+         /* save per-pass data */
+         fxMesa->restoreUnitsState = *us;
+         /* turn off texturing */
+         t0 = ctx->Texture.Unit[0]._ReallyEnabled;
+         t1 = ctx->Texture.Unit[1]._ReallyEnabled;
+         ctx->Texture.Unit[0]._ReallyEnabled = 0;
+         ctx->Texture.Unit[1]._ReallyEnabled = 0;
+         /* SUM the colors */
+         fxDDBlendEquationSeparate(ctx, GL_FUNC_ADD, GL_FUNC_ADD);
+         fxDDBlendFuncSeparate(ctx, GL_ONE, GL_ONE, GL_ZERO, GL_ONE);
+         fxDDEnable(ctx, GL_BLEND, GL_TRUE);
+         /* make sure we draw only where we want to */
+         if (us->depthTestEnabled)
+         {
+            switch (us->depthTestFunc)
+            {
+            default:
+               fxDDDepthFunc(ctx, GL_EQUAL);
+            case GL_NEVER:
+            case GL_ALWAYS:;
+            }
+            fxDDDepthMask(ctx, GL_FALSE);
+         }
+         /* switch to secondary colors */
+#if FX_PACKEDCOLOR
+         grVertexLayout(GR_PARAM_PARGB, GR_VERTEX_PSPEC_OFFSET << 2, GR_PARAM_ENABLE);
+#else  /* !FX_PACKEDCOLOR */
+         grVertexLayout(GR_PARAM_RGB, GR_VERTEX_SPEC_OFFSET << 2, GR_PARAM_ENABLE);
+#endif /* !FX_PACKEDCOLOR */
+         /* don't advertise new state */
+         fxMesa->new_state = 0;
+         break;
+      case 2: /* 2nd pass (last): the secondary color is summed over texture */
+         /* restore original state */
+         *us = fxMesa->restoreUnitsState;
+         /* restore texturing */
+         ctx->Texture.Unit[0]._ReallyEnabled = t0;
+         ctx->Texture.Unit[1]._ReallyEnabled = t1;
+         /* revert to primary colors */
+#if FX_PACKEDCOLOR
+         grVertexLayout(GR_PARAM_PARGB, GR_VERTEX_PARGB_OFFSET << 2, GR_PARAM_ENABLE);
+#else  /* !FX_PACKEDCOLOR */
+         grVertexLayout(GR_PARAM_RGB, GR_VERTEX_RGB_OFFSET << 2, GR_PARAM_ENABLE);
+#endif /* !FX_PACKEDCOLOR */
+         break;
+      default:
+         assert(0); /* NOTREACHED */
       }
-      /* switch to secondary colors */
-#if FX_PACKEDCOLOR
-      grVertexLayout(GR_PARAM_PARGB, GR_VERTEX_PSPEC_OFFSET << 2, GR_PARAM_ENABLE);
-#else  /* !FX_PACKEDCOLOR */
-      grVertexLayout(GR_PARAM_RGB, GR_VERTEX_SPEC_OFFSET << 2, GR_PARAM_ENABLE);
-#endif /* !FX_PACKEDCOLOR */
-      /* don't advertise new state */
-      fxMesa->new_state = 0;
-      break;
-   case 2: /* 2nd pass (last): the secondary color is summed over texture */
-      /* restore original state */
-      *us = fxMesa->restoreUnitsState;
-      /* restore texturing */
-      ctx->Texture.Unit[0]._ReallyEnabled = t0;
-      ctx->Texture.Unit[1]._ReallyEnabled = t1;
-      /* revert to primary colors */
-#if FX_PACKEDCOLOR
-      grVertexLayout(GR_PARAM_PARGB, GR_VERTEX_PARGB_OFFSET << 2, GR_PARAM_ENABLE);
-#else  /* !FX_PACKEDCOLOR */
-      grVertexLayout(GR_PARAM_RGB, GR_VERTEX_RGB_OFFSET << 2, GR_PARAM_ENABLE);
-#endif /* !FX_PACKEDCOLOR */
-      break;
-   default:
-      assert(0); /* NOTREACHED */
+
+      /* update HW state */
+      fxSetupBlend(ctx);
+      fxSetupDepthTest(ctx);
+      fxSetupTexture(ctx);
+
+      return (pass == 1);
    }
-
-   /* update HW state */
-   fxSetupBlend(ctx);
-   fxSetupDepthTest(ctx);
-   fxSetupTexture(ctx);
-
-   return (pass == 1);
-}
