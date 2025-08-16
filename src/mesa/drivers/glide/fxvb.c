@@ -32,7 +32,7 @@
 #include "conf.h"
 #endif
 
-// #ifdef FX
+/* FX */
 
 #include "glheader.h"
 #include "mtypes.h"
@@ -821,18 +821,3 @@ void fxFreeVB( GLcontext *ctx )
       fxMesa->verts = 0;
    }
 }
-// #else
-
-
-// /*
-//  * Need this to provide at least one external definition.
-//  */
-
-// extern int gl_fx_dummy_function_vb(void);
-// int
-// gl_fx_dummy_function_vb(void)
-// {
-//    return 0;
-// }
-
-// #endif /* FX */

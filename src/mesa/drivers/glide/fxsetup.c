@@ -37,7 +37,7 @@
 #include "conf.h"
 #endif
 
-//#if defined(FX)
+/* FX */
 
 #include "fxdrv.h"
 #include "enums.h"
@@ -2349,17 +2349,3 @@ void fxSetupFXUnits(GLcontext *ctx)
       fxMesa->new_state = 0;
    }
 }
-
-// #else
-
-// /*
-//  * Need this to provide at least one external definition.
-//  */
-
-// extern int gl_fx_dummy_function_setup(void);
-// int gl_fx_dummy_function_setup(void)
-// {
-//    return 0;
-// }
-
-// #endif /* FX */

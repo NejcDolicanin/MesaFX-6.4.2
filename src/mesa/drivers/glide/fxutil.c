@@ -1,5 +1,5 @@
 #ifdef _WIN32
-// #if defined(FX)
+/* FX */
 
 #include <windows.h>
 #include <stdio.h>
@@ -105,4 +105,3 @@ int ReadRefreshFromRegistry(void) {
 }
 
 #endif
-//#endif

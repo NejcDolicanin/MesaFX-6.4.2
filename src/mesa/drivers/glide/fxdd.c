@@ -37,7 +37,7 @@
 #include "conf.h"
 #endif
 
-//#if defined(FX)
+/* FX */
 
 #include "image.h"
 #include "mtypes.h"
@@ -2407,16 +2407,3 @@ void fxSetupDDPointers(GLcontext *ctx)
    fxInitFramebufferFuncs(&ctx->Driver);
    fxDDUpdateDDPointers(ctx, _NEW_ALL);
 }
-
-// #else
-
-// /*
-//  * Need this to provide at least one external definition.
-//  */
-// extern int gl_fx_dummy_function_dd(void);
-// int gl_fx_dummy_function_dd(void)
-// {
-//    return 0;
-// }
-
-// #endif /* FX */

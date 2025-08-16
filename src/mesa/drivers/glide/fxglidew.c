@@ -38,7 +38,7 @@
 #include "conf.h"
 #endif
 
-//#if defined(FX)
+/* FX */
 #include "fxglidew.h"
 #include "fxdrv.h"
 
@@ -250,16 +250,3 @@ FX_grSstQueryHardware(GrHwConfiguration * config)
    END_BOARD_LOCK();
    return 1;
 }
-// #else
-// /*
-//  * Need this to provide at least one external definition.
-//  */
-
-// extern int gl_fx_dummy_function_glidew(void);
-// int
-// gl_fx_dummy_function_glidew(void)
-// {
-//    return 0;
-// }
-
-// #endif /* FX */

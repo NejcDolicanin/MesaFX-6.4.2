@@ -31,7 +31,7 @@
  */
 
 
-//#ifdef FX
+/* FX */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -2320,5 +2320,3 @@ void tdfx_hook_glide (struct tdfx_glide *Glide, int pointcast)
 
 #undef GET_EXT_ADDR
 }
-
-//#endif /* FX */

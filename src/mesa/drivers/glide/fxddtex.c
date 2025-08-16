@@ -35,7 +35,7 @@
 #include "conf.h"
 #endif
 
-//#if defined(FX)
+/* FX */
 
 #include "fxdrv.h"
 #include "enums.h"
@@ -2066,17 +2066,3 @@ void fxInitTextureFuncs( struct dd_function_table *functions )
 
    functions->FreeTexImageData = _mesa_free_texmemory; /*NEJC DO I NEED THIS???? Yes! without it, it crashes on GameExit*/
 }
-
-// #else /* FX */
-
-// /*
-//  * Need this to provide at least one external definition.
-//  */
-
-// extern int gl_fx_dummy_function_ddtex(void);
-// int gl_fx_dummy_function_ddtex(void)
-// {
-//    return 0;
-// }
-
-// #endif /* FX */

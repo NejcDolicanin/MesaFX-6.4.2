@@ -33,7 +33,7 @@
 #include "conf.h"
 #endif
 
-//#if defined(FX)
+/* FX */
 
 #include "mtypes.h"
 
@@ -164,7 +164,5 @@ extern void fxWriteStencilPixels(GLcontext *ctx, struct gl_renderbuffer *rb,
 // extern void fxWriteMonoStencilPixels(GLcontext *ctx, struct gl_renderbuffer *rb,
 //                                      GLuint count, const GLint x[], const GLint y[],
 //                                      const void *value, const GLubyte *mask);
-
-// #endif /* FX */
 
 // #endif /* FXRENDERBUFFER_H */

@@ -33,7 +33,7 @@
 #include "conf.h"
 #endif
 
-// #if defined(FX)
+/* FX */
 
 #include "mtypes.h"
 
@@ -52,7 +52,3 @@ fxSetReadBuffer(GLcontext *ctx, GLenum buffer);
 
 extern void
 fxSetDrawBuffer(GLcontext *ctx, GLenum buffer);
-
-// #endif /* FX */
-
-// #endif /* FXFRAMEBUFFER_H */

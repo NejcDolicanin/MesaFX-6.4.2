@@ -38,7 +38,7 @@
 #include "conf.h"
 #endif
 
-//#if defined(FX)
+/* FX */
 
 #include "hash.h"
 #include "fxdrv.h"
@@ -856,19 +856,3 @@ fxTMRestoreTextures_NoLock(fxMesaContext ctx)
       }
    }
 }
-
-// #else
-
-
-// /*
-//  * Need this to provide at least one external definition.
-//  */
-
-// extern int gl_fx_dummy_function_texman(void);
-// int
-// gl_fx_dummy_function_texman(void)
-// {
-//    return 0;
-// }
-
-// #endif /* FX */

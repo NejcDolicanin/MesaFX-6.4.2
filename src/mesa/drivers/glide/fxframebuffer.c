@@ -30,7 +30,7 @@
 #include "conf.h"
 #endif
 
-//#if defined(FX)
+/* FX */
 
 #include "fxdrv.h"
 #include "fxrenderbuffer.h"
@@ -366,5 +366,3 @@ fxInitFramebufferFuncs(struct dd_function_table *functions)
    functions->NewFramebuffer = fxNewFramebuffer;
    functions->NewRenderbuffer = fxNewColorRenderbuffer;  // Default to color renderbuffer
 }
-
-//#endif /* FX */

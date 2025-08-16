@@ -37,7 +37,7 @@
 #include "conf.h"
 #endif
 
-//#if defined(FX)
+/* FX */
 #include "fxdrv.h"
 #include "fxutil.h"
 #include "fxframebuffer.h"
@@ -1152,16 +1152,3 @@ fxCloseHardware(void)
       }
    }
 }
-
-// #else
-
-// /*
-//  * Need this to provide at least one external definition.
-//  */
-// extern int gl_fx_dummy_function_api(void);
-// int gl_fx_dummy_function_api(void)
-// {
-//    return 0;
-// }
-
-// #endif /* FX */
