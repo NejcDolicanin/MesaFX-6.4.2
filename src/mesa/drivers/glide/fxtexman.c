@@ -33,7 +33,6 @@
 
 /* fxtexman.c - 3Dfx VooDoo texture memory functions */
 
-
 #ifdef HAVE_CONFIG_H
 #include "conf.h"
 #endif
@@ -49,8 +48,7 @@ static FxU32 texBoundMask;
 #define FX_2MB_SPLIT 0x200000
 
 static struct gl_texture_object *fxTMFindOldestObject(fxMesaContext fxMesa,
-						      int tmu);
-
+                                                      int tmu);
 
 #ifdef TEXSANITY
 static void
@@ -58,7 +56,7 @@ fubar()
 {
 }
 
-  /* Sanity Check */
+/* Sanity Check */
 static void
 sanity(fxMesaContext fxMesa)
 {
@@ -66,38 +64,46 @@ sanity(fxMesaContext fxMesa)
 
    prev = 0;
    tmp = fxMesa->tmFree[0];
-   while (tmp) {
-      if (!tmp->startAddr && !tmp->endAddr) {
-	 fprintf(stderr, "Textures fubar\n");
-	 fubar();
+   while (tmp)
+   {
+      if (!tmp->startAddr && !tmp->endAddr)
+      {
+         fprintf(stderr, "Textures fubar\n");
+         fubar();
       }
-      if (tmp->startAddr >= tmp->endAddr) {
-	 fprintf(stderr, "Node fubar\n");
-	 fubar();
+      if (tmp->startAddr >= tmp->endAddr)
+      {
+         fprintf(stderr, "Node fubar\n");
+         fubar();
       }
       if (prev && (prev->startAddr >= tmp->startAddr ||
-		   prev->endAddr > tmp->startAddr)) {
-	 fprintf(stderr, "Sorting fubar\n");
-	 fubar();
+                   prev->endAddr > tmp->startAddr))
+      {
+         fprintf(stderr, "Sorting fubar\n");
+         fubar();
       }
       prev = tmp;
       tmp = tmp->next;
    }
    prev = 0;
    tmp = fxMesa->tmFree[1];
-   while (tmp) {
-      if (!tmp->startAddr && !tmp->endAddr) {
-	 fprintf(stderr, "Textures fubar\n");
-	 fubar();
+   while (tmp)
+   {
+      if (!tmp->startAddr && !tmp->endAddr)
+      {
+         fprintf(stderr, "Textures fubar\n");
+         fubar();
       }
-      if (tmp->startAddr >= tmp->endAddr) {
-	 fprintf(stderr, "Node fubar\n");
-	 fubar();
+      if (tmp->startAddr >= tmp->endAddr)
+      {
+         fprintf(stderr, "Node fubar\n");
+         fubar();
       }
       if (prev && (prev->startAddr >= tmp->startAddr ||
-		   prev->endAddr > tmp->startAddr)) {
-	 fprintf(stderr, "Sorting fubar\n");
-	 fubar();
+                   prev->endAddr > tmp->startAddr))
+      {
+         fprintf(stderr, "Sorting fubar\n");
+         fubar();
       }
       prev = tmp;
       tmp = tmp->next;
@@ -110,15 +116,18 @@ fxTMNewRangeNode(fxMesaContext fxMesa, FxU32 start, FxU32 end)
 {
    MemRange *result = 0;
 
-   if (fxMesa->tmPool) {
+   if (fxMesa->tmPool)
+   {
       result = fxMesa->tmPool;
       fxMesa->tmPool = fxMesa->tmPool->next;
    }
-   else {
-      if (!(result = MALLOC(sizeof(MemRange)))) {
-	 fprintf(stderr, "fxTMNewRangeNode: ERROR: out of memory!\n");
-	 fxCloseHardware();
-	 exit(-1);
+   else
+   {
+      if (!(result = MALLOC(sizeof(MemRange))))
+      {
+         fprintf(stderr, "fxTMNewRangeNode: ERROR: out of memory!\n");
+         fxCloseHardware();
+         exit(-1);
       }
    }
    result->startAddr = start;
@@ -128,13 +137,14 @@ fxTMNewRangeNode(fxMesaContext fxMesa, FxU32 start, FxU32 end)
 
 #if 1
 #define fxTMDeleteRangeNode(fxMesa, range) \
-   do {                                    \
-       range->next = fxMesa->tmPool;       \
-       fxMesa->tmPool = range;             \
+   do                                      \
+   {                                       \
+      range->next = fxMesa->tmPool;        \
+      fxMesa->tmPool = range;              \
    } while (0);
 #else
 static void
-fxTMDeleteRangeNode(fxMesaContext fxMesa, MemRange * range)
+fxTMDeleteRangeNode(fxMesaContext fxMesa, MemRange *range)
 {
    range->next = fxMesa->tmPool;
    fxMesa->tmPool = range;
@@ -152,7 +162,8 @@ fxTMUInit(fxMesaContext fxMesa, int tmu)
 
    chunk = (fxMesa->type >= GR_SSTTYPE_Banshee) ? (end - start) : FX_2MB_SPLIT;
 
-   if (fxMesa->verbose) {
+   if (fxMesa->verbose)
+   {
       fprintf(stderr, "Voodoo TMU%d configuration:\n", tmu);
    }
 
@@ -161,24 +172,24 @@ fxTMUInit(fxMesaContext fxMesa, int tmu)
 
    last = 0;
    blockstart = start;
-   while (blockstart < end) {
+   while (blockstart < end)
+   {
       if (blockstart + chunk > end)
-	 blockend = end;
+         blockend = end;
       else
-	 blockend = blockstart + chunk;
+         blockend = blockstart + chunk;
 
       if (fxMesa->verbose)
-	 fprintf(stderr, "Voodoo   %08u-%08u\n",
-		 (unsigned int) blockstart, (unsigned int) blockend);
+         fprintf(stderr, "Voodoo   %08u-%08u\n",
+                 (unsigned int)blockstart, (unsigned int)blockend);
 
       tmn = fxTMNewRangeNode(fxMesa, blockstart, blockend);
       tmn->next = NULL;
 
-
       if (last)
-	 last->next = tmn;
+         last->next = tmn;
       else
-	 fxMesa->tmFree[tmu] = tmn;
+         fxMesa->tmFree[tmu] = tmn;
       last = tmn;
 
       blockstart += chunk;
@@ -192,117 +203,136 @@ fxTMFindStartAddr(fxMesaContext fxMesa, GLint tmu, int size)
    int result;
    struct gl_texture_object *obj;
 
-   if (fxMesa->HaveTexUma) {
+   if (fxMesa->HaveTexUma)
+   {
       tmu = FX_TMU0;
    }
 
-   while (1) {
+   while (1)
+   {
       prev = 0;
       tmp = fxMesa->tmFree[tmu];
-      while (tmp) {
-	 if (tmp->endAddr - tmp->startAddr >= size) {	/* Fits here */
-	    result = tmp->startAddr;
-	    tmp->startAddr += size;
-	    if (tmp->startAddr == tmp->endAddr) {	/* Empty */
-	       if (prev) {
-		  prev->next = tmp->next;
-	       }
-	       else {
-		  fxMesa->tmFree[tmu] = tmp->next;
-	       }
-	       fxTMDeleteRangeNode(fxMesa, tmp);
-	    }
-	    fxMesa->freeTexMem[tmu] -= size;
-	    return result;
-	 }
-	 prev = tmp;
-	 tmp = tmp->next;
+      while (tmp)
+      {
+         if (tmp->endAddr - tmp->startAddr >= size)
+         { /* Fits here */
+            result = tmp->startAddr;
+            tmp->startAddr += size;
+            if (tmp->startAddr == tmp->endAddr)
+            { /* Empty */
+               if (prev)
+               {
+                  prev->next = tmp->next;
+               }
+               else
+               {
+                  fxMesa->tmFree[tmu] = tmp->next;
+               }
+               fxTMDeleteRangeNode(fxMesa, tmp);
+            }
+            fxMesa->freeTexMem[tmu] -= size;
+            return result;
+         }
+         prev = tmp;
+         tmp = tmp->next;
       }
       /* No free space. Discard oldest */
-      if (TDFX_DEBUG & VERBOSE_TEXTURE) {
-	 fprintf(stderr, "fxTMFindStartAddr: No free space. Discard oldest\n");
+      if (TDFX_DEBUG & VERBOSE_TEXTURE)
+      {
+         fprintf(stderr, "fxTMFindStartAddr: No free space. Discard oldest\n");
       }
       obj = fxTMFindOldestObject(fxMesa, tmu);
-      if (!obj) {
-	 fprintf(stderr, "fxTMFindStartAddr: ERROR: No space for texture\n");
-	 return -1;
+      if (!obj)
+      {
+         fprintf(stderr, "fxTMFindStartAddr: ERROR: No space for texture\n");
+         return -1;
       }
       fxTMMoveOutTM(fxMesa, obj);
       texSwaps++;
    }
 }
 
-int fxTMCheckStartAddr (fxMesaContext fxMesa, GLint tmu, tfxTexInfo *ti)
+int fxTMCheckStartAddr(fxMesaContext fxMesa, GLint tmu, tfxTexInfo *ti)
 {
- MemRange *tmp;
- int size;
+   MemRange *tmp;
+   int size;
 
- if (fxMesa->HaveTexUma) {
-    return FXTRUE;
- }
+   if (fxMesa->HaveTexUma)
+   {
+      return FXTRUE;
+   }
 
- size = grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &(ti->info));
+   size = grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &(ti->info));
 
- tmp = fxMesa->tmFree[tmu];
- while (tmp) {
-       if (tmp->endAddr - tmp->startAddr >= size) { /* Fits here */
-          return FXTRUE;
-       }
-       tmp = tmp->next;
- }
+   tmp = fxMesa->tmFree[tmu];
+   while (tmp)
+   {
+      if (tmp->endAddr - tmp->startAddr >= size)
+      { /* Fits here */
+         return FXTRUE;
+      }
+      tmp = tmp->next;
+   }
 
- return FXFALSE;
+   return FXFALSE;
 }
 
 static void
-fxTMRemoveRange(fxMesaContext fxMesa, GLint tmu, MemRange * range)
+fxTMRemoveRange(fxMesaContext fxMesa, GLint tmu, MemRange *range)
 {
    MemRange *tmp, *prev;
 
-   if (fxMesa->HaveTexUma) {
+   if (fxMesa->HaveTexUma)
+   {
       tmu = FX_TMU0;
    }
 
-   if (range->startAddr == range->endAddr) {
+   if (range->startAddr == range->endAddr)
+   {
       fxTMDeleteRangeNode(fxMesa, range);
       return;
    }
    fxMesa->freeTexMem[tmu] += range->endAddr - range->startAddr;
    prev = 0;
    tmp = fxMesa->tmFree[tmu];
-   while (tmp) {
-      if (range->startAddr > tmp->startAddr) {
-	 prev = tmp;
-	 tmp = tmp->next;
+   while (tmp)
+   {
+      if (range->startAddr > tmp->startAddr)
+      {
+         prev = tmp;
+         tmp = tmp->next;
       }
       else
-	 break;
+         break;
    }
    /* When we create the regions, we make a split at the 2MB boundary.
       Now we have to make sure we don't join those 2MB boundary regions
       back together again. */
    range->next = tmp;
-   if (tmp) {
-      if (range->endAddr == tmp->startAddr
-	  && tmp->startAddr & texBoundMask) {
-	 /* Combine */
-	 tmp->startAddr = range->startAddr;
-	 fxTMDeleteRangeNode(fxMesa, range);
-	 range = tmp;
+   if (tmp)
+   {
+      if (range->endAddr == tmp->startAddr && tmp->startAddr & texBoundMask)
+      {
+         /* Combine */
+         tmp->startAddr = range->startAddr;
+         fxTMDeleteRangeNode(fxMesa, range);
+         range = tmp;
       }
    }
-   if (prev) {
-      if (prev->endAddr == range->startAddr
-	  && range->startAddr & texBoundMask) {
-	 /* Combine */
-	 prev->endAddr = range->endAddr;
-	 prev->next = range->next;
-	 fxTMDeleteRangeNode(fxMesa, range);
+   if (prev)
+   {
+      if (prev->endAddr == range->startAddr && range->startAddr & texBoundMask)
+      {
+         /* Combine */
+         prev->endAddr = range->endAddr;
+         prev->next = range->next;
+         fxTMDeleteRangeNode(fxMesa, range);
       }
       else
-	 prev->next = range;
+         prev->next = range;
    }
-   else {
+   else
+   {
       fxMesa->tmFree[tmu] = range;
    }
 }
@@ -329,57 +359,63 @@ fxTMFindOldestObject(fxMesaContext fxMesa, int tmu)
 
    for (id = _mesa_HashFirstEntry(textures);
         id;
-        id = _mesa_HashNextEntry(textures, id)) {
-      struct gl_texture_object *tmp
-         = (struct gl_texture_object *) _mesa_HashLookup(textures, id);
+        id = _mesa_HashNextEntry(textures, id))
+   {
+      struct gl_texture_object *tmp = (struct gl_texture_object *)_mesa_HashLookup(textures, id);
       tfxTexInfo *info = fxTMGetTexInfo(tmp);
 
       if (info && info->isInTM &&
-	  ((info->whichTMU == tmu) ||
-	   (info->whichTMU == FX_TMU_BOTH) ||
-	   (info->whichTMU == FX_TMU_SPLIT) ||
-	   fxMesa->HaveTexUma
-	  )
-	 ) {
-	 lasttime = info->lastTimeUsed;
+          ((info->whichTMU == tmu) ||
+           (info->whichTMU == FX_TMU_BOTH) ||
+           (info->whichTMU == FX_TMU_SPLIT) ||
+           fxMesa->HaveTexUma))
+      {
+         lasttime = info->lastTimeUsed;
 
-	 if (lasttime > bindnumber)
-	    age = bindnumber + (UINT_MAX - lasttime + 1);	/* TO DO: check wrap around */
-	 else
-	    age = bindnumber - lasttime;
+         if (lasttime > bindnumber)
+            age = bindnumber + (UINT_MAX - lasttime + 1); /* TO DO: check wrap around */
+         else
+            age = bindnumber - lasttime;
 
-	 if (age >= old) {
-	    old = age;
-	    obj = tmp;
-	 }
+         if (age >= old)
+         {
+            old = age;
+            obj = tmp;
+         }
 
          /* examine priority */
-         if (tmp->Priority < lowestPriority) {
+         if (tmp->Priority < lowestPriority)
+         {
             lowestPriority = tmp->Priority;
             lowestPriorityObj = tmp;
          }
       }
    }
 
-   if (lowestPriorityObj != NULL) {
-       if (TDFX_DEBUG & VERBOSE_TEXTURE) {
-          fprintf(stderr, "fxTMFindOldestObject: %d pri=%f\n", lowestPriorityObj->Name, lowestPriority);
-       }
-       return lowestPriorityObj;
+   if (lowestPriorityObj != NULL)
+   {
+      if (TDFX_DEBUG & VERBOSE_TEXTURE)
+      {
+         fprintf(stderr, "fxTMFindOldestObject: %d pri=%f\n", lowestPriorityObj->Name, lowestPriority);
+      }
+      return lowestPriorityObj;
    }
-   else {
-       if (TDFX_DEBUG & VERBOSE_TEXTURE) {
-          if (obj != NULL) {
-             fprintf(stderr, "fxTMFindOldestObject: %d age=%d\n", obj->Name, old);
-          }
-       }
-       return obj;
+   else
+   {
+      if (TDFX_DEBUG & VERBOSE_TEXTURE)
+      {
+         if (obj != NULL)
+         {
+            fprintf(stderr, "fxTMFindOldestObject: %d age=%d\n", obj->Name, old);
+         }
+      }
+      return obj;
    }
 }
 
 static MemRange *
 fxTMAddObj(fxMesaContext fxMesa,
-	   struct gl_texture_object *tObj, GLint tmu, int texmemsize)
+           struct gl_texture_object *tObj, GLint tmu, int texmemsize)
 {
    FxI32 startAddr;
    MemRange *range;
@@ -393,46 +429,51 @@ fxTMAddObj(fxMesaContext fxMesa,
 
 /* External Functions */
 
-void
-fxTMMoveInTM_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj,
-		    GLint where)
+void fxTMMoveInTM_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj,
+                         GLint where)
 {
    tfxTexInfo *ti = fxTMGetTexInfo(tObj);
    int i, l;
    int texmemsize;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER) {
+   if (TDFX_DEBUG & VERBOSE_DRIVER)
+   {
       fprintf(stderr, "fxTMMoveInTM_NoLock(%d)\n", tObj->Name);
    }
 
    fxMesa->stats.reqTexUpload++;
 
-   if (!ti->validated) {
+   if (!ti->validated)
+   {
       fprintf(stderr, "fxTMMoveInTM_NoLock: INTERNAL ERROR: not validated\n");
       fxCloseHardware();
       exit(-1);
    }
 
-   if (ti->isInTM) {
+   if (ti->isInTM)
+   {
       if (ti->whichTMU == where)
-	 return;
+         return;
       if (where == FX_TMU_SPLIT || ti->whichTMU == FX_TMU_SPLIT)
-	 fxTMMoveOutTM_NoLock(fxMesa, tObj);
-      else {
-	 if (ti->whichTMU == FX_TMU_BOTH)
-	    return;
-	 where = FX_TMU_BOTH;
+         fxTMMoveOutTM_NoLock(fxMesa, tObj);
+      else
+      {
+         if (ti->whichTMU == FX_TMU_BOTH)
+            return;
+         where = FX_TMU_BOTH;
       }
    }
 
-   if (TDFX_DEBUG & (VERBOSE_DRIVER | VERBOSE_TEXTURE)) {
+   if (TDFX_DEBUG & (VERBOSE_DRIVER | VERBOSE_TEXTURE))
+   {
       fprintf(stderr, "fxTMMoveInTM_NoLock: downloading %p (%d) in texture memory in %d\n",
-	              (void *)tObj, tObj->Name, where);
+              (void *)tObj, tObj->Name, where);
    }
 
-   ti->whichTMU = (FxU32) where;
+   ti->whichTMU = (FxU32)where;
 
-   switch (where) {
+   switch (where)
+   {
    case FX_TMU0:
    case FX_TMU1:
       texmemsize = (int)grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &(ti->info));
@@ -440,16 +481,17 @@ fxTMMoveInTM_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj,
       fxMesa->stats.memTexUpload += texmemsize;
 
       for (i = FX_largeLodValue(ti->info), l = ti->minLevel;
-	   i <= FX_smallLodValue(ti->info); i++, l++) {
-	 struct gl_texture_image *texImage = tObj->Image[0][l];
-	 grTexDownloadMipMapLevel(where,
-					    ti->tm[where]->startAddr,
-					    FX_valueToLod(i),
-					    FX_largeLodLog2(ti->info),
-					    FX_aspectRatioLog2(ti->info),
-					    ti->info.format,
-					    GR_MIPMAPLEVELMASK_BOTH,
-					    texImage->Data);
+           i <= FX_smallLodValue(ti->info); i++, l++)
+      {
+         struct gl_texture_image *texImage = tObj->Image[0][l];
+         grTexDownloadMipMapLevel(where,
+                                  ti->tm[where]->startAddr,
+                                  FX_valueToLod(i),
+                                  FX_largeLodLog2(ti->info),
+                                  FX_aspectRatioLog2(ti->info),
+                                  ti->info.format,
+                                  GR_MIPMAPLEVELMASK_BOTH,
+                                  texImage->Data);
       }
       break;
    case FX_TMU_SPLIT:
@@ -462,26 +504,27 @@ fxTMMoveInTM_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj,
       fxMesa->stats.memTexUpload += texmemsize;
 
       for (i = FX_largeLodValue(ti->info), l = ti->minLevel;
-	   i <= FX_smallLodValue(ti->info); i++, l++) {
-	 struct gl_texture_image *texImage = tObj->Image[0][l];
+           i <= FX_smallLodValue(ti->info); i++, l++)
+      {
+         struct gl_texture_image *texImage = tObj->Image[0][l];
 
-	 grTexDownloadMipMapLevel(GR_TMU0,
-					    ti->tm[FX_TMU0]->startAddr,
-					    FX_valueToLod(i),
-					    FX_largeLodLog2(ti->info),
-					    FX_aspectRatioLog2(ti->info),
-					    ti->info.format,
-					    GR_MIPMAPLEVELMASK_ODD,
-					    texImage->Data);
+         grTexDownloadMipMapLevel(GR_TMU0,
+                                  ti->tm[FX_TMU0]->startAddr,
+                                  FX_valueToLod(i),
+                                  FX_largeLodLog2(ti->info),
+                                  FX_aspectRatioLog2(ti->info),
+                                  ti->info.format,
+                                  GR_MIPMAPLEVELMASK_ODD,
+                                  texImage->Data);
 
-	 grTexDownloadMipMapLevel(GR_TMU1,
-					    ti->tm[FX_TMU1]->startAddr,
-					    FX_valueToLod(i),
-					    FX_largeLodLog2(ti->info),
-					    FX_aspectRatioLog2(ti->info),
-					    ti->info.format,
-					    GR_MIPMAPLEVELMASK_EVEN,
-					    texImage->Data);
+         grTexDownloadMipMapLevel(GR_TMU1,
+                                  ti->tm[FX_TMU1]->startAddr,
+                                  FX_valueToLod(i),
+                                  FX_largeLodLog2(ti->info),
+                                  FX_aspectRatioLog2(ti->info),
+                                  ti->info.format,
+                                  GR_MIPMAPLEVELMASK_EVEN,
+                                  texImage->Data);
       }
       break;
    case FX_TMU_BOTH:
@@ -494,25 +537,26 @@ fxTMMoveInTM_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj,
       fxMesa->stats.memTexUpload += texmemsize;
 
       for (i = FX_largeLodValue(ti->info), l = ti->minLevel;
-	   i <= FX_smallLodValue(ti->info); i++, l++) {
-	 struct gl_texture_image *texImage = tObj->Image[0][l];
-	 grTexDownloadMipMapLevel(GR_TMU0,
-					    ti->tm[FX_TMU0]->startAddr,
-					    FX_valueToLod(i),
-					    FX_largeLodLog2(ti->info),
-					    FX_aspectRatioLog2(ti->info),
-					    ti->info.format,
-					    GR_MIPMAPLEVELMASK_BOTH,
-					    texImage->Data);
+           i <= FX_smallLodValue(ti->info); i++, l++)
+      {
+         struct gl_texture_image *texImage = tObj->Image[0][l];
+         grTexDownloadMipMapLevel(GR_TMU0,
+                                  ti->tm[FX_TMU0]->startAddr,
+                                  FX_valueToLod(i),
+                                  FX_largeLodLog2(ti->info),
+                                  FX_aspectRatioLog2(ti->info),
+                                  ti->info.format,
+                                  GR_MIPMAPLEVELMASK_BOTH,
+                                  texImage->Data);
 
-	 grTexDownloadMipMapLevel(GR_TMU1,
-					    ti->tm[FX_TMU1]->startAddr,
-					    FX_valueToLod(i),
-					    FX_largeLodLog2(ti->info),
-					    FX_aspectRatioLog2(ti->info),
-					    ti->info.format,
-					    GR_MIPMAPLEVELMASK_BOTH,
-					    texImage->Data);
+         grTexDownloadMipMapLevel(GR_TMU1,
+                                  ti->tm[FX_TMU1]->startAddr,
+                                  FX_valueToLod(i),
+                                  FX_largeLodLog2(ti->info),
+                                  FX_aspectRatioLog2(ti->info),
+                                  ti->info.format,
+                                  GR_MIPMAPLEVELMASK_BOTH,
+                                  texImage->Data);
       }
       break;
    default:
@@ -526,20 +570,16 @@ fxTMMoveInTM_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj,
    ti->isInTM = GL_TRUE;
 }
 
-
-void
-fxTMMoveInTM(fxMesaContext fxMesa, struct gl_texture_object *tObj,
-	     GLint where)
+void fxTMMoveInTM(fxMesaContext fxMesa, struct gl_texture_object *tObj,
+                  GLint where)
 {
    BEGIN_BOARD_LOCK();
    fxTMMoveInTM_NoLock(fxMesa, tObj, where);
    END_BOARD_LOCK();
 }
 
-
-void
-fxTMReloadMipMapLevel(fxMesaContext fxMesa, struct gl_texture_object *tObj,
-		      GLint level)
+void fxTMReloadMipMapLevel(fxMesaContext fxMesa, struct gl_texture_object *tObj,
+                           GLint level)
 {
    tfxTexInfo *ti = fxTMGetTexInfo(tObj);
    GrLOD_t lodlevel;
@@ -547,7 +587,8 @@ fxTMReloadMipMapLevel(fxMesaContext fxMesa, struct gl_texture_object *tObj,
    struct gl_texture_image *texImage = tObj->Image[0][level];
    tfxMipMapLevel *mml = FX_MIPMAP_DATA(texImage);
 
-   if (TDFX_DEBUG & VERBOSE_TEXTURE) {
+   if (TDFX_DEBUG & VERBOSE_TEXTURE)
+   {
       fprintf(stderr, "fxTMReloadMipMapLevel(%p (%d), %d)\n", (void *)tObj, tObj->Name, level);
    }
 
@@ -557,62 +598,64 @@ fxTMReloadMipMapLevel(fxMesaContext fxMesa, struct gl_texture_object *tObj,
    assert(mml->glideFormat > 0);
    assert(ti->isInTM);
 
-   if (!ti->validated) {
+   if (!ti->validated)
+   {
       fprintf(stderr, "fxTMReloadMipMapLevel: INTERNAL ERROR: not validated\n");
       fxCloseHardware();
       exit(-1);
    }
 
-   tmu = (int) ti->whichTMU;
+   tmu = (int)ti->whichTMU;
    fxMesa->stats.reqTexUpload++;
    fxMesa->stats.texUpload++;
 
-   lodlevel =  ti->info.largeLodLog2 - (level - ti->minLevel);
+   lodlevel = ti->info.largeLodLog2 - (level - ti->minLevel);
 
-   switch (tmu) {
+   switch (tmu)
+   {
    case FX_TMU0:
    case FX_TMU1:
       grTexDownloadMipMapLevel(tmu,
-				  ti->tm[tmu]->startAddr,
-				  lodlevel,
-				  FX_largeLodLog2(ti->info),
-				  FX_aspectRatioLog2(ti->info),
-				  ti->info.format,
-				  GR_MIPMAPLEVELMASK_BOTH, texImage->Data);
+                               ti->tm[tmu]->startAddr,
+                               lodlevel,
+                               FX_largeLodLog2(ti->info),
+                               FX_aspectRatioLog2(ti->info),
+                               ti->info.format,
+                               GR_MIPMAPLEVELMASK_BOTH, texImage->Data);
       break;
    case FX_TMU_SPLIT:
       grTexDownloadMipMapLevel(GR_TMU0,
-				  ti->tm[GR_TMU0]->startAddr,
-				  lodlevel,
-				  FX_largeLodLog2(ti->info),
-				  FX_aspectRatioLog2(ti->info),
-				  ti->info.format,
-				  GR_MIPMAPLEVELMASK_ODD, texImage->Data);
+                               ti->tm[GR_TMU0]->startAddr,
+                               lodlevel,
+                               FX_largeLodLog2(ti->info),
+                               FX_aspectRatioLog2(ti->info),
+                               ti->info.format,
+                               GR_MIPMAPLEVELMASK_ODD, texImage->Data);
 
       grTexDownloadMipMapLevel(GR_TMU1,
-				  ti->tm[GR_TMU1]->startAddr,
-				  lodlevel,
-				  FX_largeLodLog2(ti->info),
-				  FX_aspectRatioLog2(ti->info),
-				  ti->info.format,
-				  GR_MIPMAPLEVELMASK_EVEN, texImage->Data);
+                               ti->tm[GR_TMU1]->startAddr,
+                               lodlevel,
+                               FX_largeLodLog2(ti->info),
+                               FX_aspectRatioLog2(ti->info),
+                               ti->info.format,
+                               GR_MIPMAPLEVELMASK_EVEN, texImage->Data);
       break;
    case FX_TMU_BOTH:
       grTexDownloadMipMapLevel(GR_TMU0,
-				  ti->tm[GR_TMU0]->startAddr,
-				  lodlevel,
-				  FX_largeLodLog2(ti->info),
-				  FX_aspectRatioLog2(ti->info),
-				  ti->info.format,
-				  GR_MIPMAPLEVELMASK_BOTH, texImage->Data);
+                               ti->tm[GR_TMU0]->startAddr,
+                               lodlevel,
+                               FX_largeLodLog2(ti->info),
+                               FX_aspectRatioLog2(ti->info),
+                               ti->info.format,
+                               GR_MIPMAPLEVELMASK_BOTH, texImage->Data);
 
       grTexDownloadMipMapLevel(GR_TMU1,
-				  ti->tm[GR_TMU1]->startAddr,
-				  lodlevel,
-				  FX_largeLodLog2(ti->info),
-				  FX_aspectRatioLog2(ti->info),
-				  ti->info.format,
-				  GR_MIPMAPLEVELMASK_BOTH, texImage->Data);
+                               ti->tm[GR_TMU1]->startAddr,
+                               lodlevel,
+                               FX_largeLodLog2(ti->info),
+                               FX_aspectRatioLog2(ti->info),
+                               ti->info.format,
+                               GR_MIPMAPLEVELMASK_BOTH, texImage->Data);
       break;
 
    default:
@@ -622,10 +665,9 @@ fxTMReloadMipMapLevel(fxMesaContext fxMesa, struct gl_texture_object *tObj,
    }
 }
 
-void
-fxTMReloadSubMipMapLevel(fxMesaContext fxMesa,
-			 struct gl_texture_object *tObj,
-			 GLint level, GLint yoffset, GLint height)
+void fxTMReloadSubMipMapLevel(fxMesaContext fxMesa,
+                              struct gl_texture_object *tObj,
+                              GLint level, GLint yoffset, GLint height)
 {
    tfxTexInfo *ti = fxTMGetTexInfo(tObj);
    GrLOD_t lodlevel;
@@ -636,79 +678,76 @@ fxTMReloadSubMipMapLevel(fxMesaContext fxMesa,
 
    assert(mml);
 
-   if (!ti->validated) {
+   if (!ti->validated)
+   {
       fprintf(stderr, "fxTMReloadSubMipMapLevel: INTERNAL ERROR: not validated\n");
       fxCloseHardware();
       exit(-1);
    }
 
-   tmu = (int) ti->whichTMU;
+   tmu = (int)ti->whichTMU;
    fxTMMoveInTM(fxMesa, tObj, tmu);
 
    fxTexGetInfo(mml->width, mml->height,
-		&lodlevel, NULL, NULL, NULL, NULL, NULL);
+                &lodlevel, NULL, NULL, NULL, NULL, NULL);
 
    if ((ti->info.format == GR_TEXFMT_INTENSITY_8) ||
        (ti->info.format == GR_TEXFMT_P_8) ||
        (ti->info.format == GR_TEXFMT_ALPHA_8))
-	 data = (GLushort *) texImage->Data + ((yoffset * mml->width) >> 1);
+      data = (GLushort *)texImage->Data + ((yoffset * mml->width) >> 1);
    else
-      data = (GLushort *) texImage->Data + yoffset * mml->width;
+      data = (GLushort *)texImage->Data + yoffset * mml->width;
 
-   switch (tmu) {
+   switch (tmu)
+   {
    case FX_TMU0:
    case FX_TMU1:
       grTexDownloadMipMapLevelPartial(tmu,
-					 ti->tm[tmu]->startAddr,
-					 FX_valueToLod(FX_lodToValue(lodlevel)
-						       + level),
-					 FX_largeLodLog2(ti->info),
-					 FX_aspectRatioLog2(ti->info),
-					 ti->info.format,
-					 GR_MIPMAPLEVELMASK_BOTH, data,
-					 yoffset, yoffset + height - 1);
+                                      ti->tm[tmu]->startAddr,
+                                      FX_valueToLod(FX_lodToValue(lodlevel) + level),
+                                      FX_largeLodLog2(ti->info),
+                                      FX_aspectRatioLog2(ti->info),
+                                      ti->info.format,
+                                      GR_MIPMAPLEVELMASK_BOTH, data,
+                                      yoffset, yoffset + height - 1);
       break;
    case FX_TMU_SPLIT:
       grTexDownloadMipMapLevelPartial(GR_TMU0,
-					 ti->tm[FX_TMU0]->startAddr,
-					 FX_valueToLod(FX_lodToValue(lodlevel)
-						       + level),
-					 FX_largeLodLog2(ti->info),
-					 FX_aspectRatioLog2(ti->info),
-					 ti->info.format,
-					 GR_MIPMAPLEVELMASK_ODD, data,
-					 yoffset, yoffset + height - 1);
+                                      ti->tm[FX_TMU0]->startAddr,
+                                      FX_valueToLod(FX_lodToValue(lodlevel) + level),
+                                      FX_largeLodLog2(ti->info),
+                                      FX_aspectRatioLog2(ti->info),
+                                      ti->info.format,
+                                      GR_MIPMAPLEVELMASK_ODD, data,
+                                      yoffset, yoffset + height - 1);
 
       grTexDownloadMipMapLevelPartial(GR_TMU1,
-					 ti->tm[FX_TMU1]->startAddr,
-					 FX_valueToLod(FX_lodToValue(lodlevel)
-						       + level),
-					 FX_largeLodLog2(ti->info),
-					 FX_aspectRatioLog2(ti->info),
-					 ti->info.format,
-					 GR_MIPMAPLEVELMASK_EVEN, data,
-					 yoffset, yoffset + height - 1);
+                                      ti->tm[FX_TMU1]->startAddr,
+                                      FX_valueToLod(FX_lodToValue(lodlevel) + level),
+                                      FX_largeLodLog2(ti->info),
+                                      FX_aspectRatioLog2(ti->info),
+                                      ti->info.format,
+                                      GR_MIPMAPLEVELMASK_EVEN, data,
+                                      yoffset, yoffset + height - 1);
       break;
    case FX_TMU_BOTH:
       grTexDownloadMipMapLevelPartial(GR_TMU0,
-					 ti->tm[FX_TMU0]->startAddr,
-					 FX_valueToLod(FX_lodToValue(lodlevel)
-						       + level),
-					 FX_largeLodLog2(ti->info),
-					 FX_aspectRatioLog2(ti->info),
-					 ti->info.format,
-					 GR_MIPMAPLEVELMASK_BOTH, data,
-					 yoffset, yoffset + height - 1);
+                                      ti->tm[FX_TMU0]->startAddr,
+                                      FX_valueToLod(FX_lodToValue(lodlevel) + level),
+                                      FX_largeLodLog2(ti->info),
+                                      FX_aspectRatioLog2(ti->info),
+                                      ti->info.format,
+                                      GR_MIPMAPLEVELMASK_BOTH, data,
+                                      yoffset, yoffset + height - 1);
 
       grTexDownloadMipMapLevelPartial(GR_TMU1,
-					 ti->tm[FX_TMU1]->startAddr,
-					 FX_valueToLod(FX_lodToValue(lodlevel)
-						       + level),
-					 FX_largeLodLog2(ti->info),
-					 FX_aspectRatioLog2(ti->info),
-					 ti->info.format,
-					 GR_MIPMAPLEVELMASK_BOTH, data,
-					 yoffset, yoffset + height - 1);
+                                      ti->tm[FX_TMU1]->startAddr,
+                                      FX_valueToLod(FX_lodToValue(lodlevel) + level),
+                                      FX_largeLodLog2(ti->info),
+                                      FX_aspectRatioLog2(ti->info),
+                                      ti->info.format,
+                                      GR_MIPMAPLEVELMASK_BOTH, data,
+                                      yoffset, yoffset + height - 1);
       break;
    default:
       fprintf(stderr, "fxTMReloadSubMipMapLevel: INTERNAL ERROR: wrong tmu (%d)\n", tmu);
@@ -717,22 +756,23 @@ fxTMReloadSubMipMapLevel(fxMesaContext fxMesa,
    }
 }
 
-void
-fxTMMoveOutTM(fxMesaContext fxMesa, struct gl_texture_object *tObj)
+void fxTMMoveOutTM(fxMesaContext fxMesa, struct gl_texture_object *tObj)
 {
    tfxTexInfo *ti = fxTMGetTexInfo(tObj);
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER) {
+   if (TDFX_DEBUG & VERBOSE_DRIVER)
+   {
       fprintf(stderr, "fxTMMoveOutTM(%p (%d))\n", (void *)tObj, tObj->Name);
    }
-            
+
    if (!ti->isInTM)
       return;
 
-   switch (ti->whichTMU) {
+   switch (ti->whichTMU)
+   {
    case FX_TMU0:
    case FX_TMU1:
-      fxTMRemoveRange(fxMesa, (int) ti->whichTMU, ti->tm[ti->whichTMU]);
+      fxTMRemoveRange(fxMesa, (int)ti->whichTMU, ti->tm[ti->whichTMU]);
       break;
    case FX_TMU_SPLIT:
    case FX_TMU_BOTH:
@@ -749,28 +789,32 @@ fxTMMoveOutTM(fxMesaContext fxMesa, struct gl_texture_object *tObj)
    ti->whichTMU = FX_TMU_NONE;
 }
 
-void
-fxTMFreeTexture(fxMesaContext fxMesa, struct gl_texture_object *tObj)
+void fxTMFreeTexture(fxMesaContext fxMesa, struct gl_texture_object *tObj)
 {
    tfxTexInfo *ti = fxTMGetTexInfo(tObj);
    int i;
 
-   if (TDFX_DEBUG & VERBOSE_TEXTURE) {
+   if (TDFX_DEBUG & VERBOSE_TEXTURE)
+   {
       fprintf(stderr, "fxTMFreeTexture(%p (%d))\n", (void *)tObj, tObj->Name);
    }
 
    fxTMMoveOutTM(fxMesa, tObj);
 
-   for (i = 0; i < MAX_TEXTURE_LEVELS; i++) {
+   for (i = 0; i < MAX_TEXTURE_LEVELS; i++)
+   {
       struct gl_texture_image *texImage = tObj->Image[0][i];
-      if (texImage) {
-         if (texImage->DriverData) {
+      if (texImage)
+      {
+         if (texImage->DriverData)
+         {
             FREE(texImage->DriverData);
             texImage->DriverData = NULL;
          }
       }
    }
-   switch (ti->whichTMU) {
+   switch (ti->whichTMU)
+   {
    case FX_TMU0:
    case FX_TMU1:
       fxTMDeleteRangeNode(fxMesa, ti->tm[ti->whichTMU]);
@@ -783,13 +827,13 @@ fxTMFreeTexture(fxMesaContext fxMesa, struct gl_texture_object *tObj)
    }
 }
 
-void
-fxTMInit(fxMesaContext fxMesa)
+void fxTMInit(fxMesaContext fxMesa)
 {
    fxMesa->texBindNumber = 0;
    fxMesa->tmPool = 0;
 
-   if (fxMesa->HaveTexUma) {
+   if (fxMesa->HaveTexUma)
+   {
       grEnable(GR_TEXTURE_UMA_EXT);
    }
 
@@ -801,58 +845,63 @@ fxTMInit(fxMesaContext fxMesa)
    texBoundMask = (fxMesa->type >= GR_SSTTYPE_Banshee) ? -1 : (FX_2MB_SPLIT - 1);
 }
 
-void
-fxTMClose(fxMesaContext fxMesa)
+void fxTMClose(fxMesaContext fxMesa)
 {
    MemRange *tmp, *next;
 
    tmp = fxMesa->tmPool;
-   while (tmp) {
+   while (tmp)
+   {
       next = tmp->next;
       FREE(tmp);
       tmp = next;
    }
    tmp = fxMesa->tmFree[FX_TMU0];
-   while (tmp) {
+   while (tmp)
+   {
       next = tmp->next;
       FREE(tmp);
       tmp = next;
    }
-   if (fxMesa->haveTwoTMUs) {
+   if (fxMesa->haveTwoTMUs)
+   {
       tmp = fxMesa->tmFree[FX_TMU1];
-      while (tmp) {
-	 next = tmp->next;
-	 FREE(tmp);
-	 tmp = next;
+      while (tmp)
+      {
+         next = tmp->next;
+         FREE(tmp);
+         tmp = next;
       }
    }
 }
 
-void
-fxTMRestoreTextures_NoLock(fxMesaContext ctx)
+void fxTMRestoreTextures_NoLock(fxMesaContext ctx)
 {
    struct _mesa_HashTable *textures = ctx->glCtx->Shared->TexObjects;
    GLuint id;
 
    for (id = _mesa_HashFirstEntry(textures);
         id;
-        id = _mesa_HashNextEntry(textures, id)) {
-      struct gl_texture_object *tObj
-         = (struct gl_texture_object *) _mesa_HashLookup(textures, id);
+        id = _mesa_HashNextEntry(textures, id))
+   {
+      struct gl_texture_object *tObj = (struct gl_texture_object *)_mesa_HashLookup(textures, id);
       tfxTexInfo *ti = fxTMGetTexInfo(tObj);
-      if (ti && ti->isInTM) {
+      if (ti && ti->isInTM)
+      {
          int i;
-	 for (i = 0; i < MAX_TEXTURE_UNITS; i++) {
-	    if (ctx->glCtx->Texture.Unit[i]._Current == tObj) {
-	       /* Force the texture onto the board, as it could be in use */
-	       int where = ti->whichTMU;
-	       fxTMMoveOutTM_NoLock(ctx, tObj);
-	       fxTMMoveInTM_NoLock(ctx, tObj, where);
-	       break;
-	    }
+         for (i = 0; i < MAX_TEXTURE_UNITS; i++)
+         {
+            if (ctx->glCtx->Texture.Unit[i]._Current == tObj)
+            {
+               /* Force the texture onto the board, as it could be in use */
+               int where = ti->whichTMU;
+               fxTMMoveOutTM_NoLock(ctx, tObj);
+               fxTMMoveInTM_NoLock(ctx, tObj, where);
+               break;
+            }
          }
-	 if (i == MAX_TEXTURE_UNITS)	/* Mark the texture as off the board */
-	    fxTMMoveOutTM_NoLock(ctx, tObj);
+         if (i == MAX_TEXTURE_UNITS) /* Mark the texture as off the board */
+            fxTMMoveOutTM_NoLock(ctx, tObj);
       }
    }
 }

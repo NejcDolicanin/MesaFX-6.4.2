@@ -9,6 +9,12 @@
         "tnl.h": "c",
         "t_context.h": "c",
         "tdfx_dd.h": "c",
-        "glheader.h": "c"
+        "glheader.h": "c",
+        "signal.h": "c",
+        "fxdrv.h": "c",
+        "fxglidew.h": "c",
+        "hash.h": "c",
+        "m_translate.h": "c",
+        "swrast_setup.h": "c"
     }
 }

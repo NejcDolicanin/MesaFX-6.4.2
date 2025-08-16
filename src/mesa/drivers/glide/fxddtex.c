@@ -1672,7 +1672,7 @@ void fxDDTexImage2D(GLcontext *ctx, GLenum target, GLint level,
          }
       }
    }
-   
+
    ti->info.format = mml->glideFormat;
    texImage->FetchTexelc = fxFetchFunction(texImage->TexFormat->MesaFormat);
 
@@ -2047,7 +2047,7 @@ fxDDTestProxyTexImage(GLcontext *ctx, GLenum target,
 }
 
 /* INIT Texture functions*/
-void fxInitTextureFuncs( struct dd_function_table *functions )
+void fxInitTextureFuncs(struct dd_function_table *functions)
 {
    functions->BindTexture = fxDDTexBind;
    functions->NewTextureObject = fxDDNewTextureObject;

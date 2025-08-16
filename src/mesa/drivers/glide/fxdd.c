@@ -2299,7 +2299,6 @@ void fxSetupDDPointers_PreContext(struct dd_function_table *functions, fxMesaCon
    /*functions->ChooseTextureFormat = fxDDChooseTextureFormat;*/
    // functions->FreeTexImageData = _mesa_free_texmemory; /*NEJC DO I NEED THIS???? Yes! without it, it crashes on GameExit*/
 
-
    /* Set up essential texture functions that Mesa needs during context creation */
    /* Mesa calls NewTextureObject during _mesa_init_texture() to create default textures */
    /* fxInitTextureFuncs( struct dd_function_table *functions ) */

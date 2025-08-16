@@ -54,111 +54,118 @@
 /*
  * These macros are used below when handling COMBINE_EXT.
  */
-#define TEXENV_OPERAND_INVERTED(operand)                            \
-  (((operand) == GL_ONE_MINUS_SRC_ALPHA)                            \
-   || ((operand) == GL_ONE_MINUS_SRC_COLOR))
-#define TEXENV_OPERAND_ALPHA(operand)                               \
-  (((operand) == GL_SRC_ALPHA) || ((operand) == GL_ONE_MINUS_SRC_ALPHA))
-#define TEXENV_SETUP_ARG_A(param, source, operand, iteratedAlpha)   \
-    switch (source) {                                               \
-    case GL_TEXTURE:                                                \
-        param = GR_CMBX_LOCAL_TEXTURE_ALPHA;                        \
-        break;                                                      \
-    case GL_CONSTANT_EXT:                                           \
-        param = GR_CMBX_TMU_CALPHA;                                 \
-        break;                                                      \
-    case GL_PRIMARY_COLOR_EXT:                                      \
-        param = GR_CMBX_ITALPHA;                                    \
-        break;                                                      \
-    case GL_PREVIOUS_EXT:                                           \
-        param = iteratedAlpha;                                      \
-        break;                                                      \
-    default:                                                        \
-       /*                                                           \
-        * This is here just to keep from getting                    \
-        * compiler warnings.                                        \
-        */                                                          \
-        param = GR_CMBX_ZERO;                                       \
-        break;                                                      \
-    }
+#define TEXENV_OPERAND_INVERTED(operand) \
+   (((operand) == GL_ONE_MINUS_SRC_ALPHA) || ((operand) == GL_ONE_MINUS_SRC_COLOR))
+#define TEXENV_OPERAND_ALPHA(operand) \
+   (((operand) == GL_SRC_ALPHA) || ((operand) == GL_ONE_MINUS_SRC_ALPHA))
+#define TEXENV_SETUP_ARG_A(param, source, operand, iteratedAlpha) \
+   switch (source)                                                \
+   {                                                              \
+   case GL_TEXTURE:                                               \
+      param = GR_CMBX_LOCAL_TEXTURE_ALPHA;                        \
+      break;                                                      \
+   case GL_CONSTANT_EXT:                                          \
+      param = GR_CMBX_TMU_CALPHA;                                 \
+      break;                                                      \
+   case GL_PRIMARY_COLOR_EXT:                                     \
+      param = GR_CMBX_ITALPHA;                                    \
+      break;                                                      \
+   case GL_PREVIOUS_EXT:                                          \
+      param = iteratedAlpha;                                      \
+      break;                                                      \
+   default:                                                       \
+      /*                                                          \
+       * This is here just to keep from getting                   \
+       * compiler warnings.                                       \
+       */                                                         \
+      param = GR_CMBX_ZERO;                                       \
+      break;                                                      \
+   }
 
 #define TEXENV_SETUP_ARG_RGB(param, source, operand, iteratedColor, iteratedAlpha) \
-    if (!TEXENV_OPERAND_ALPHA(operand)) {                           \
-        switch (source) {                                           \
-        case GL_TEXTURE:                                            \
-            param = GR_CMBX_LOCAL_TEXTURE_RGB;                      \
-            break;                                                  \
-        case GL_CONSTANT_EXT:                                       \
-            param = GR_CMBX_TMU_CCOLOR;                             \
-            break;                                                  \
-        case GL_PRIMARY_COLOR_EXT:                                  \
-            param = GR_CMBX_ITRGB;                                  \
-            break;                                                  \
-        case GL_PREVIOUS_EXT:                                       \
-            param = iteratedColor;                                  \
-            break;                                                  \
-        default:                                                    \
-           /*                                                       \
-            * This is here just to keep from getting                \
-            * compiler warnings.                                    \
-            */                                                      \
-            param = GR_CMBX_ZERO;                                   \
-            break;                                                  \
-        }                                                           \
-    } else {                                                        \
-        switch (source) {                                           \
-        case GL_TEXTURE:                                            \
-            param = GR_CMBX_LOCAL_TEXTURE_ALPHA;                    \
-            break;                                                  \
-        case GL_CONSTANT_EXT:                                       \
-            param = GR_CMBX_TMU_CALPHA;                             \
-            break;                                                  \
-        case GL_PRIMARY_COLOR_EXT:                                  \
-            param = GR_CMBX_ITALPHA;                                \
-            break;                                                  \
-        case GL_PREVIOUS_EXT:                                       \
-            param = iteratedAlpha;                                  \
-            break;                                                  \
-        default:                                                    \
-           /*                                                       \
-            * This is here just to keep from getting                \
-            * compiler warnings.                                    \
-            */                                                      \
-            param = GR_CMBX_ZERO;                                   \
-            break;                                                  \
-        }                                                           \
-    }
+   if (!TEXENV_OPERAND_ALPHA(operand))                                             \
+   {                                                                               \
+      switch (source)                                                              \
+      {                                                                            \
+      case GL_TEXTURE:                                                             \
+         param = GR_CMBX_LOCAL_TEXTURE_RGB;                                        \
+         break;                                                                    \
+      case GL_CONSTANT_EXT:                                                        \
+         param = GR_CMBX_TMU_CCOLOR;                                               \
+         break;                                                                    \
+      case GL_PRIMARY_COLOR_EXT:                                                   \
+         param = GR_CMBX_ITRGB;                                                    \
+         break;                                                                    \
+      case GL_PREVIOUS_EXT:                                                        \
+         param = iteratedColor;                                                    \
+         break;                                                                    \
+      default:                                                                     \
+         /*                                                                        \
+          * This is here just to keep from getting                                 \
+          * compiler warnings.                                                     \
+          */                                                                       \
+         param = GR_CMBX_ZERO;                                                     \
+         break;                                                                    \
+      }                                                                            \
+   }                                                                               \
+   else                                                                            \
+   {                                                                               \
+      switch (source)                                                              \
+      {                                                                            \
+      case GL_TEXTURE:                                                             \
+         param = GR_CMBX_LOCAL_TEXTURE_ALPHA;                                      \
+         break;                                                                    \
+      case GL_CONSTANT_EXT:                                                        \
+         param = GR_CMBX_TMU_CALPHA;                                               \
+         break;                                                                    \
+      case GL_PRIMARY_COLOR_EXT:                                                   \
+         param = GR_CMBX_ITALPHA;                                                  \
+         break;                                                                    \
+      case GL_PREVIOUS_EXT:                                                        \
+         param = iteratedAlpha;                                                    \
+         break;                                                                    \
+      default:                                                                     \
+         /*                                                                        \
+          * This is here just to keep from getting                                 \
+          * compiler warnings.                                                     \
+          */                                                                       \
+         param = GR_CMBX_ZERO;                                                     \
+         break;                                                                    \
+      }                                                                            \
+   }
 
-#define TEXENV_SETUP_MODE_RGB(param, operand)                       \
-    switch (operand) {                                              \
-    case GL_SRC_COLOR:                                              \
-    case GL_SRC_ALPHA:                                              \
-        param = GR_FUNC_MODE_X;                                     \
-        break;                                                      \
-    case GL_ONE_MINUS_SRC_ALPHA:                                    \
-    case GL_ONE_MINUS_SRC_COLOR:                                    \
-        param = GR_FUNC_MODE_ONE_MINUS_X;                           \
-        break;                                                      \
-    default:                                                        \
-        param = GR_FUNC_MODE_ZERO;                                  \
-        break;                                                      \
-    }
+#define TEXENV_SETUP_MODE_RGB(param, operand) \
+   switch (operand)                           \
+   {                                          \
+   case GL_SRC_COLOR:                         \
+   case GL_SRC_ALPHA:                         \
+      param = GR_FUNC_MODE_X;                 \
+      break;                                  \
+   case GL_ONE_MINUS_SRC_ALPHA:               \
+   case GL_ONE_MINUS_SRC_COLOR:               \
+      param = GR_FUNC_MODE_ONE_MINUS_X;       \
+      break;                                  \
+   default:                                   \
+      param = GR_FUNC_MODE_ZERO;              \
+      break;                                  \
+   }
 
-#define TEXENV_SETUP_MODE_A(param, operand)                         \
-    switch (operand) {                                              \
-    case GL_SRC_ALPHA:                                              \
-        param = GR_FUNC_MODE_X;                                     \
-        break;                                                      \
-    case GL_ONE_MINUS_SRC_ALPHA:                                    \
-        param = GR_FUNC_MODE_ONE_MINUS_X;                           \
-        break;                                                      \
-    default:                                                        \
-        param = GR_FUNC_MODE_ZERO;                                  \
-        break;                                                      \
-    }
+#define TEXENV_SETUP_MODE_A(param, operand) \
+   switch (operand)                         \
+   {                                        \
+   case GL_SRC_ALPHA:                       \
+      param = GR_FUNC_MODE_X;               \
+      break;                                \
+   case GL_ONE_MINUS_SRC_ALPHA:             \
+      param = GR_FUNC_MODE_ONE_MINUS_X;     \
+      break;                                \
+   default:                                 \
+      param = GR_FUNC_MODE_ZERO;            \
+      break;                                \
+   }
 
 static void
-fxSetupTextureEnvNapalm_NoLock(GLcontext * ctx, GLuint textureset, GLuint tmu, GLboolean iterated)
+fxSetupTextureEnvNapalm_NoLock(GLcontext *ctx, GLuint textureset, GLuint tmu, GLboolean iterated)
 {
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    const struct gl_texture_unit *texUnit = &ctx->Texture.Unit[textureset];
@@ -170,220 +177,252 @@ fxSetupTextureEnvNapalm_NoLock(GLcontext * ctx, GLuint textureset, GLuint tmu, G
    tfxTexInfo *ti;
    struct gl_texture_object *tObj = texUnit->_Current;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER) {
+   if (TDFX_DEBUG & VERBOSE_DRIVER)
+   {
       fprintf(stderr, "fxSetupTextureEnvNapalm_NoLock(unit %u, TMU %u, iterated %d)\n",
-                      textureset, tmu, iterated);
+              textureset, tmu, iterated);
    }
 
    ti = fxTMGetTexInfo(tObj);
 
    ifmt = ti->baseLevelInternalFormat;
 
-   if (iterated) {
+   if (iterated)
+   {
       /* we don't have upstream TMU */
       locala = GR_CMBX_ITALPHA;
       localc = GR_CMBX_ITRGB;
-   } else {
+   }
+   else
+   {
       /* we have upstream TMU */
       locala = GR_CMBX_OTHER_TEXTURE_ALPHA;
       localc = GR_CMBX_OTHER_TEXTURE_RGB;
    }
 
    alphaComb.InvertD = FXFALSE;
-   alphaComb.Shift   = 0;
-   alphaComb.Invert  = FXFALSE;
+   alphaComb.Shift = 0;
+   alphaComb.Invert = FXFALSE;
    colorComb.InvertD = FXFALSE;
-   colorComb.Shift   = 0;
-   colorComb.Invert  = FXFALSE;
+   colorComb.Shift = 0;
+   colorComb.Invert = FXFALSE;
 
-   switch (texUnit->EnvMode) {
+   switch (texUnit->EnvMode)
+   {
    case GL_DECAL:
       alphaComb.SourceA = locala;
-      alphaComb.ModeA   = GR_FUNC_MODE_X;
+      alphaComb.ModeA = GR_FUNC_MODE_X;
       alphaComb.SourceB = GR_CMBX_ZERO;
-      alphaComb.ModeB   = GR_FUNC_MODE_X;
+      alphaComb.ModeB = GR_FUNC_MODE_X;
       alphaComb.SourceC = GR_CMBX_ZERO;
       alphaComb.InvertC = FXTRUE;
       alphaComb.SourceD = GR_CMBX_ZERO;
 
       colorComb.SourceA = GR_CMBX_LOCAL_TEXTURE_RGB;
-      colorComb.ModeA   = GR_FUNC_MODE_X;
+      colorComb.ModeA = GR_FUNC_MODE_X;
       colorComb.SourceB = localc;
-      colorComb.ModeB   = GR_FUNC_MODE_NEGATIVE_X;
+      colorComb.ModeB = GR_FUNC_MODE_NEGATIVE_X;
       colorComb.SourceC = GR_CMBX_LOCAL_TEXTURE_ALPHA;
       colorComb.InvertC = FXFALSE;
       colorComb.SourceD = GR_CMBX_B;
       break;
    case GL_MODULATE:
-      if (ifmt == GL_LUMINANCE || ifmt == GL_RGB) {
+      if (ifmt == GL_LUMINANCE || ifmt == GL_RGB)
+      {
          alphaComb.SourceA = locala;
-         alphaComb.ModeA   = GR_FUNC_MODE_X;
+         alphaComb.ModeA = GR_FUNC_MODE_X;
          alphaComb.SourceB = GR_CMBX_ZERO;
-         alphaComb.ModeB   = GR_FUNC_MODE_X;
+         alphaComb.ModeB = GR_FUNC_MODE_X;
          alphaComb.SourceC = GR_CMBX_ZERO;
          alphaComb.InvertC = FXTRUE;
          alphaComb.SourceD = GR_CMBX_ZERO;
-      } else {
+      }
+      else
+      {
          alphaComb.SourceA = locala;
-         alphaComb.ModeA   = GR_FUNC_MODE_X;
+         alphaComb.ModeA = GR_FUNC_MODE_X;
          alphaComb.SourceB = GR_CMBX_ZERO;
-         alphaComb.ModeB   = GR_FUNC_MODE_X;
+         alphaComb.ModeB = GR_FUNC_MODE_X;
          alphaComb.SourceC = GR_CMBX_LOCAL_TEXTURE_ALPHA;
          alphaComb.InvertC = FXFALSE;
          alphaComb.SourceD = GR_CMBX_ZERO;
       }
 
-      if (ifmt == GL_ALPHA) {
+      if (ifmt == GL_ALPHA)
+      {
          colorComb.SourceA = localc;
-         colorComb.ModeA   = GR_FUNC_MODE_X;
+         colorComb.ModeA = GR_FUNC_MODE_X;
          colorComb.SourceB = GR_CMBX_ZERO;
-         colorComb.ModeB   = GR_FUNC_MODE_X;
+         colorComb.ModeB = GR_FUNC_MODE_X;
          colorComb.SourceC = GR_CMBX_ZERO;
          colorComb.InvertC = FXTRUE;
          colorComb.SourceD = GR_CMBX_ZERO;
-      } else {
+      }
+      else
+      {
          colorComb.SourceA = localc;
-         colorComb.ModeA   = GR_FUNC_MODE_X;
+         colorComb.ModeA = GR_FUNC_MODE_X;
          colorComb.SourceB = GR_CMBX_ZERO;
-         colorComb.ModeB   = GR_FUNC_MODE_X;
+         colorComb.ModeB = GR_FUNC_MODE_X;
          colorComb.SourceC = GR_CMBX_LOCAL_TEXTURE_RGB;
          colorComb.InvertC = FXFALSE;
          colorComb.SourceD = GR_CMBX_ZERO;
       }
       break;
    case GL_BLEND:
-      if (ifmt == GL_INTENSITY) {
+      if (ifmt == GL_INTENSITY)
+      {
          alphaComb.SourceA = GR_CMBX_TMU_CALPHA;
-         alphaComb.ModeA   = GR_FUNC_MODE_X;
+         alphaComb.ModeA = GR_FUNC_MODE_X;
          alphaComb.SourceB = locala;
-         alphaComb.ModeB   = GR_FUNC_MODE_X;
+         alphaComb.ModeB = GR_FUNC_MODE_X;
          alphaComb.SourceC = GR_CMBX_LOCAL_TEXTURE_ALPHA;
          alphaComb.InvertC = FXFALSE;
          alphaComb.SourceD = GR_CMBX_ZERO;
-      } else {
+      }
+      else
+      {
          alphaComb.SourceA = locala;
-         alphaComb.ModeA   = GR_FUNC_MODE_X;
+         alphaComb.ModeA = GR_FUNC_MODE_X;
          alphaComb.SourceB = GR_CMBX_ZERO;
-         alphaComb.ModeB   = GR_FUNC_MODE_X;
+         alphaComb.ModeB = GR_FUNC_MODE_X;
          alphaComb.SourceC = GR_CMBX_LOCAL_TEXTURE_ALPHA;
          alphaComb.InvertC = FXFALSE;
          alphaComb.SourceD = GR_CMBX_ZERO;
       }
 
-      if (ifmt == GL_ALPHA) {
+      if (ifmt == GL_ALPHA)
+      {
          colorComb.SourceA = localc;
-         colorComb.ModeA   = GR_FUNC_MODE_X;
+         colorComb.ModeA = GR_FUNC_MODE_X;
          colorComb.SourceB = GR_CMBX_ZERO;
-         colorComb.ModeB   = GR_FUNC_MODE_X;
+         colorComb.ModeB = GR_FUNC_MODE_X;
          colorComb.SourceC = GR_CMBX_ZERO;
          colorComb.InvertC = FXTRUE;
          colorComb.SourceD = GR_CMBX_ZERO;
-      } else {
+      }
+      else
+      {
          colorComb.SourceA = GR_CMBX_TMU_CCOLOR;
-         colorComb.ModeA   = GR_FUNC_MODE_X;
+         colorComb.ModeA = GR_FUNC_MODE_X;
          colorComb.SourceB = localc;
-         colorComb.ModeB   = GR_FUNC_MODE_NEGATIVE_X;
+         colorComb.ModeB = GR_FUNC_MODE_NEGATIVE_X;
          colorComb.SourceC = GR_CMBX_LOCAL_TEXTURE_RGB;
          colorComb.InvertC = FXFALSE;
          colorComb.SourceD = GR_CMBX_B;
       }
 
       fxMesa->Glide.grConstantColorValueExt(tmu,
-         (((GLuint)(envColor[0] * 255.0f))      ) |
-         (((GLuint)(envColor[1] * 255.0f)) <<  8) |
-         (((GLuint)(envColor[2] * 255.0f)) << 16) |
-         (((GLuint)(envColor[3] * 255.0f)) << 24));
+                                            (((GLuint)(envColor[0] * 255.0f))) |
+                                                (((GLuint)(envColor[1] * 255.0f)) << 8) |
+                                                (((GLuint)(envColor[2] * 255.0f)) << 16) |
+                                                (((GLuint)(envColor[3] * 255.0f)) << 24));
       break;
    case GL_REPLACE:
-      if (ifmt == GL_LUMINANCE || ifmt == GL_RGB) {
+      if (ifmt == GL_LUMINANCE || ifmt == GL_RGB)
+      {
          alphaComb.SourceA = locala;
-         alphaComb.ModeA   = GR_FUNC_MODE_X;
+         alphaComb.ModeA = GR_FUNC_MODE_X;
          alphaComb.SourceB = GR_CMBX_ZERO;
-         alphaComb.ModeB   = GR_FUNC_MODE_X;
+         alphaComb.ModeB = GR_FUNC_MODE_X;
          alphaComb.SourceC = GR_CMBX_ZERO;
          alphaComb.InvertC = FXTRUE;
          alphaComb.SourceD = GR_CMBX_ZERO;
-      } else {
+      }
+      else
+      {
          alphaComb.SourceA = GR_CMBX_LOCAL_TEXTURE_ALPHA;
-         alphaComb.ModeA   = GR_FUNC_MODE_X;
+         alphaComb.ModeA = GR_FUNC_MODE_X;
          alphaComb.SourceB = GR_CMBX_ZERO;
-         alphaComb.ModeB   = GR_FUNC_MODE_X;
+         alphaComb.ModeB = GR_FUNC_MODE_X;
          alphaComb.SourceC = GR_CMBX_ZERO;
          alphaComb.InvertC = FXTRUE;
          alphaComb.SourceD = GR_CMBX_ZERO;
       }
 
-      if (ifmt == GL_ALPHA) {
+      if (ifmt == GL_ALPHA)
+      {
          colorComb.SourceA = localc;
-         colorComb.ModeA   = GR_FUNC_MODE_X;
+         colorComb.ModeA = GR_FUNC_MODE_X;
          colorComb.SourceB = GR_CMBX_ZERO;
-         colorComb.ModeB   = GR_FUNC_MODE_X;
+         colorComb.ModeB = GR_FUNC_MODE_X;
          colorComb.SourceC = GR_CMBX_ZERO;
          colorComb.InvertC = FXTRUE;
          colorComb.SourceD = GR_CMBX_ZERO;
-      } else {
+      }
+      else
+      {
          colorComb.SourceA = GR_CMBX_LOCAL_TEXTURE_RGB;
-         colorComb.ModeA   = GR_FUNC_MODE_X;
+         colorComb.ModeA = GR_FUNC_MODE_X;
          colorComb.SourceB = GR_CMBX_ZERO;
-         colorComb.ModeB   = GR_FUNC_MODE_X;
+         colorComb.ModeB = GR_FUNC_MODE_X;
          colorComb.SourceC = GR_CMBX_ZERO;
          colorComb.InvertC = FXTRUE;
          colorComb.SourceD = GR_CMBX_ZERO;
       }
       break;
    case GL_ADD:
-      if (ifmt == GL_LUMINANCE || ifmt == GL_RGB) {
+      if (ifmt == GL_LUMINANCE || ifmt == GL_RGB)
+      {
          alphaComb.SourceA = locala;
-         alphaComb.ModeA   = GR_FUNC_MODE_X;
+         alphaComb.ModeA = GR_FUNC_MODE_X;
          alphaComb.SourceB = GR_CMBX_ZERO;
-         alphaComb.ModeB   = GR_FUNC_MODE_X;
+         alphaComb.ModeB = GR_FUNC_MODE_X;
          alphaComb.SourceC = GR_CMBX_ZERO;
          alphaComb.InvertC = FXTRUE;
          alphaComb.SourceD = GR_CMBX_ZERO;
-      } else if (ifmt == GL_INTENSITY) {
+      }
+      else if (ifmt == GL_INTENSITY)
+      {
          alphaComb.SourceA = locala;
-         alphaComb.ModeA   = GR_FUNC_MODE_X;
+         alphaComb.ModeA = GR_FUNC_MODE_X;
          alphaComb.SourceB = GR_CMBX_LOCAL_TEXTURE_ALPHA;
-         alphaComb.ModeB   = GR_FUNC_MODE_X;
+         alphaComb.ModeB = GR_FUNC_MODE_X;
          alphaComb.SourceC = GR_CMBX_ZERO;
          alphaComb.InvertC = FXTRUE;
          alphaComb.SourceD = GR_CMBX_ZERO;
-      } else {
+      }
+      else
+      {
          alphaComb.SourceA = locala;
-         alphaComb.ModeA   = GR_FUNC_MODE_X;
+         alphaComb.ModeA = GR_FUNC_MODE_X;
          alphaComb.SourceB = GR_CMBX_ZERO;
-         alphaComb.ModeB   = GR_FUNC_MODE_X;
+         alphaComb.ModeB = GR_FUNC_MODE_X;
          alphaComb.SourceC = GR_CMBX_LOCAL_TEXTURE_ALPHA;
          alphaComb.InvertC = FXFALSE;
          alphaComb.SourceD = GR_CMBX_ZERO;
       }
 
-      if (ifmt == GL_ALPHA) {
+      if (ifmt == GL_ALPHA)
+      {
          colorComb.SourceA = localc;
-         colorComb.ModeA   = GR_FUNC_MODE_X;
+         colorComb.ModeA = GR_FUNC_MODE_X;
          colorComb.SourceB = GR_CMBX_ZERO;
-         colorComb.ModeB   = GR_FUNC_MODE_X;
+         colorComb.ModeB = GR_FUNC_MODE_X;
          colorComb.SourceC = GR_CMBX_ZERO;
          colorComb.InvertC = FXTRUE;
          colorComb.SourceD = GR_CMBX_ZERO;
-      } else {
+      }
+      else
+      {
          colorComb.SourceA = localc;
-         colorComb.ModeA   = GR_FUNC_MODE_X;
+         colorComb.ModeA = GR_FUNC_MODE_X;
          colorComb.SourceB = GR_CMBX_LOCAL_TEXTURE_RGB;
-         colorComb.ModeB   = GR_FUNC_MODE_X;
+         colorComb.ModeB = GR_FUNC_MODE_X;
          colorComb.SourceC = GR_CMBX_ZERO;
          colorComb.InvertC = FXTRUE;
          colorComb.SourceD = GR_CMBX_ZERO;
       }
       break;
-    /* COMBINE_EXT */
-    case GL_COMBINE_EXT:
+   /* COMBINE_EXT */
+   case GL_COMBINE_EXT:
       /* XXX todo - INCOMPLETE!!! */
-      if (TDFX_DEBUG & (VERBOSE_DRIVER | VERBOSE_TEXTURE)) {
+      if (TDFX_DEBUG & (VERBOSE_DRIVER | VERBOSE_TEXTURE))
+      {
 #if 1
          fprintf(stderr, "COMBINE_EXT: %s + %s\n",
-	      _mesa_lookup_enum_by_nr(texUnit->Combine.ModeRGB),
-	      _mesa_lookup_enum_by_nr(texUnit->Combine.ModeA));
+                 _mesa_lookup_enum_by_nr(texUnit->Combine.ModeRGB),
+                 _mesa_lookup_enum_by_nr(texUnit->Combine.ModeA));
 #else
          fprintf(stderr, "Texture Unit %d\n", textureset);
          fprintf(stderr, "  GL_TEXTURE_ENV_MODE = %s\n", _mesa_lookup_enum_by_nr(texUnit->EnvMode));
@@ -407,164 +446,170 @@ fxSetupTextureEnvNapalm_NoLock(GLcontext * ctx, GLuint textureset, GLuint tmu, G
 #endif
       }
 
-      alphaComb.Shift   = texUnit->Combine.ScaleShiftA;
-      colorComb.Shift   = texUnit->Combine.ScaleShiftRGB;
+      alphaComb.Shift = texUnit->Combine.ScaleShiftA;
+      colorComb.Shift = texUnit->Combine.ScaleShiftRGB;
 
-      switch (texUnit->Combine.ModeRGB) {
-             case GL_MODULATE:
-                  /* Arg0 * Arg1 == (A + 0) * C + 0 */
-                  TEXENV_SETUP_ARG_RGB(colorComb.SourceA,
-                                       texUnit->Combine.SourceRGB[0],
-                                       texUnit->Combine.OperandRGB[0],
-                                       localc, locala);
-                  TEXENV_SETUP_MODE_RGB(colorComb.ModeA,
-                                        texUnit->Combine.OperandRGB[0]);
-                  colorComb.SourceB = GR_CMBX_ZERO;
-                  colorComb.ModeB   = GR_FUNC_MODE_ZERO;
-                  TEXENV_SETUP_ARG_RGB(colorComb.SourceC,
-                                       texUnit->Combine.SourceRGB[1],
-                                       texUnit->Combine.OperandRGB[1],
-                                       localc, locala);
-                  colorComb.InvertC = TEXENV_OPERAND_INVERTED(
-                                       texUnit->Combine.OperandRGB[1]);
-                  colorComb.SourceD = GR_CMBX_ZERO;
-                  break;
-             case GL_REPLACE:
-                  /* Arg0 == (A + 0) * 1 + 0 */
-                  TEXENV_SETUP_ARG_RGB(colorComb.SourceA,
-                                       texUnit->Combine.SourceRGB[0],
-                                       texUnit->Combine.OperandRGB[0],
-                                       localc, locala);
-                  TEXENV_SETUP_MODE_RGB(colorComb.ModeA,
-                                        texUnit->Combine.OperandRGB[0]);
-                  colorComb.SourceB = GR_CMBX_ZERO;
-                  colorComb.ModeB   = GR_FUNC_MODE_ZERO;
-                  colorComb.SourceC = GR_CMBX_ZERO;
-                  colorComb.InvertC = FXTRUE;
-                  colorComb.SourceD = GR_CMBX_ZERO;
-                  break;
-             case GL_ADD:
-                  /* Arg0 + Arg1 = (A + B) * 1 + 0 */
-                  TEXENV_SETUP_ARG_RGB(colorComb.SourceA,
-                                       texUnit->Combine.SourceRGB[0],
-                                       texUnit->Combine.OperandRGB[0],
-                                       localc, locala);
-                  TEXENV_SETUP_MODE_RGB(colorComb.ModeA,
-                                        texUnit->Combine.OperandRGB[0]);
-                  TEXENV_SETUP_ARG_RGB(colorComb.SourceB,
-                                       texUnit->Combine.SourceRGB[1],
-                                       texUnit->Combine.OperandRGB[1],
-                                       localc, locala);
-                  TEXENV_SETUP_MODE_RGB(colorComb.ModeB,
-                                        texUnit->Combine.OperandRGB[1]);
-                  colorComb.SourceC = GR_CMBX_ZERO;
-                  colorComb.InvertC = FXTRUE;
-                  colorComb.SourceD = GR_CMBX_ZERO;
-                  break;
-             case GL_INTERPOLATE_EXT:
-                  /* Arg0 * Arg2 + Arg1 * (1 - Arg2) ==
-                   * (Arg0 - Arg1) * Arg2 + Arg1 == (A - B) * C + D
-                   */
-                  TEXENV_SETUP_ARG_RGB(colorComb.SourceA,
-                                       texUnit->Combine.SourceRGB[0],
-                                       texUnit->Combine.OperandRGB[0],
-                                       localc, locala);
-                  TEXENV_SETUP_MODE_RGB(colorComb.ModeA,
-                                        texUnit->Combine.OperandRGB[0]);
-                  TEXENV_SETUP_ARG_RGB(colorComb.SourceB,
-                                       texUnit->Combine.SourceRGB[1],
-                                       texUnit->Combine.OperandRGB[1],
-                                       localc, locala);
-                  if (TEXENV_OPERAND_INVERTED(texUnit->Combine.OperandRGB[1])) {
-                     /* Hack alert!!! This case is wrong!!! */
-                     fprintf(stderr, "COMBINE_EXT_color: WRONG!!!\n");
-                     colorComb.ModeB = GR_FUNC_MODE_NEGATIVE_X;
-                  } else {
-                     colorComb.ModeB = GR_FUNC_MODE_NEGATIVE_X;
-                  }
-                  /*
-                   * The Source/Operand for the C value must
-                   * specify some kind of alpha value.
-                   */
-                  TEXENV_SETUP_ARG_A(colorComb.SourceC,
-                                     texUnit->Combine.SourceRGB[2],
-                                     texUnit->Combine.OperandRGB[2],
-                                     locala);
-                  colorComb.InvertC = FXFALSE;
-                  colorComb.SourceD = GR_CMBX_B;
-                  break;
-             default:
-                  fprintf(stderr, "COMBINE_EXT_color: %s\n",
-                                  _mesa_lookup_enum_by_nr(texUnit->Combine.ModeRGB));
+      switch (texUnit->Combine.ModeRGB)
+      {
+      case GL_MODULATE:
+         /* Arg0 * Arg1 == (A + 0) * C + 0 */
+         TEXENV_SETUP_ARG_RGB(colorComb.SourceA,
+                              texUnit->Combine.SourceRGB[0],
+                              texUnit->Combine.OperandRGB[0],
+                              localc, locala);
+         TEXENV_SETUP_MODE_RGB(colorComb.ModeA,
+                               texUnit->Combine.OperandRGB[0]);
+         colorComb.SourceB = GR_CMBX_ZERO;
+         colorComb.ModeB = GR_FUNC_MODE_ZERO;
+         TEXENV_SETUP_ARG_RGB(colorComb.SourceC,
+                              texUnit->Combine.SourceRGB[1],
+                              texUnit->Combine.OperandRGB[1],
+                              localc, locala);
+         colorComb.InvertC = TEXENV_OPERAND_INVERTED(
+             texUnit->Combine.OperandRGB[1]);
+         colorComb.SourceD = GR_CMBX_ZERO;
+         break;
+      case GL_REPLACE:
+         /* Arg0 == (A + 0) * 1 + 0 */
+         TEXENV_SETUP_ARG_RGB(colorComb.SourceA,
+                              texUnit->Combine.SourceRGB[0],
+                              texUnit->Combine.OperandRGB[0],
+                              localc, locala);
+         TEXENV_SETUP_MODE_RGB(colorComb.ModeA,
+                               texUnit->Combine.OperandRGB[0]);
+         colorComb.SourceB = GR_CMBX_ZERO;
+         colorComb.ModeB = GR_FUNC_MODE_ZERO;
+         colorComb.SourceC = GR_CMBX_ZERO;
+         colorComb.InvertC = FXTRUE;
+         colorComb.SourceD = GR_CMBX_ZERO;
+         break;
+      case GL_ADD:
+         /* Arg0 + Arg1 = (A + B) * 1 + 0 */
+         TEXENV_SETUP_ARG_RGB(colorComb.SourceA,
+                              texUnit->Combine.SourceRGB[0],
+                              texUnit->Combine.OperandRGB[0],
+                              localc, locala);
+         TEXENV_SETUP_MODE_RGB(colorComb.ModeA,
+                               texUnit->Combine.OperandRGB[0]);
+         TEXENV_SETUP_ARG_RGB(colorComb.SourceB,
+                              texUnit->Combine.SourceRGB[1],
+                              texUnit->Combine.OperandRGB[1],
+                              localc, locala);
+         TEXENV_SETUP_MODE_RGB(colorComb.ModeB,
+                               texUnit->Combine.OperandRGB[1]);
+         colorComb.SourceC = GR_CMBX_ZERO;
+         colorComb.InvertC = FXTRUE;
+         colorComb.SourceD = GR_CMBX_ZERO;
+         break;
+      case GL_INTERPOLATE_EXT:
+         /* Arg0 * Arg2 + Arg1 * (1 - Arg2) ==
+          * (Arg0 - Arg1) * Arg2 + Arg1 == (A - B) * C + D
+          */
+         TEXENV_SETUP_ARG_RGB(colorComb.SourceA,
+                              texUnit->Combine.SourceRGB[0],
+                              texUnit->Combine.OperandRGB[0],
+                              localc, locala);
+         TEXENV_SETUP_MODE_RGB(colorComb.ModeA,
+                               texUnit->Combine.OperandRGB[0]);
+         TEXENV_SETUP_ARG_RGB(colorComb.SourceB,
+                              texUnit->Combine.SourceRGB[1],
+                              texUnit->Combine.OperandRGB[1],
+                              localc, locala);
+         if (TEXENV_OPERAND_INVERTED(texUnit->Combine.OperandRGB[1]))
+         {
+            /* Hack alert!!! This case is wrong!!! */
+            fprintf(stderr, "COMBINE_EXT_color: WRONG!!!\n");
+            colorComb.ModeB = GR_FUNC_MODE_NEGATIVE_X;
+         }
+         else
+         {
+            colorComb.ModeB = GR_FUNC_MODE_NEGATIVE_X;
+         }
+         /*
+          * The Source/Operand for the C value must
+          * specify some kind of alpha value.
+          */
+         TEXENV_SETUP_ARG_A(colorComb.SourceC,
+                            texUnit->Combine.SourceRGB[2],
+                            texUnit->Combine.OperandRGB[2],
+                            locala);
+         colorComb.InvertC = FXFALSE;
+         colorComb.SourceD = GR_CMBX_B;
+         break;
+      default:
+         fprintf(stderr, "COMBINE_EXT_color: %s\n",
+                 _mesa_lookup_enum_by_nr(texUnit->Combine.ModeRGB));
       }
 
-      switch (texUnit->Combine.ModeA) {
-             case GL_MODULATE:
-                  /* Arg0 * Arg1 == (A + 0) * C + 0 */
-                  TEXENV_SETUP_ARG_A(alphaComb.SourceA,
-                                     texUnit->Combine.SourceA[0],
-                                     texUnit->Combine.OperandA[0],
-                                     locala);
-                  TEXENV_SETUP_MODE_A(alphaComb.ModeA,
-                                      texUnit->Combine.OperandA[0]);
-                  alphaComb.SourceB = GR_CMBX_ZERO;
-                  alphaComb.ModeB   = GR_FUNC_MODE_ZERO;
-                  TEXENV_SETUP_ARG_A(alphaComb.SourceC,
-                                     texUnit->Combine.SourceA[1],
-                                     texUnit->Combine.OperandA[1],
-                                     locala);
-                  alphaComb.InvertC = TEXENV_OPERAND_INVERTED(
-                                       texUnit->Combine.OperandA[1]);
-                  alphaComb.SourceD = GR_CMBX_ZERO;
-                  break;
-             case GL_REPLACE:
-                 /* Arg0 == (A + 0) * 1 + 0 */
-                  TEXENV_SETUP_ARG_A(alphaComb.SourceA,
-                                     texUnit->Combine.SourceA[0],
-                                     texUnit->Combine.OperandA[0],
-                                     locala);
-                  TEXENV_SETUP_MODE_A(alphaComb.ModeA,
-                                      texUnit->Combine.OperandA[0]);
-                  alphaComb.SourceB = GR_CMBX_ZERO;
-                  alphaComb.ModeB   = GR_FUNC_MODE_ZERO;
-                  alphaComb.SourceC = GR_CMBX_ZERO;
-                  alphaComb.InvertC = FXTRUE;
-                  alphaComb.SourceD = GR_CMBX_ZERO;
-                  break;
-             case GL_ADD:
-                  /* Arg0 + Arg1 = (A + B) * 1 + 0 */
-                  TEXENV_SETUP_ARG_A(alphaComb.SourceA,
-                                     texUnit->Combine.SourceA[0],
-                                     texUnit->Combine.OperandA[0],
-                                     locala);
-                  TEXENV_SETUP_MODE_A(alphaComb.ModeA,
-                                      texUnit->Combine.OperandA[0]);
-                  TEXENV_SETUP_ARG_A(alphaComb.SourceB,
-                                     texUnit->Combine.SourceA[1],
-                                     texUnit->Combine.OperandA[1],
-                                     locala);
-                  TEXENV_SETUP_MODE_A(alphaComb.ModeB,
-                                      texUnit->Combine.OperandA[1]);
-                  alphaComb.SourceC = GR_CMBX_ZERO;
-                  alphaComb.InvertC = FXTRUE;
-                  alphaComb.SourceD = GR_CMBX_ZERO;
-                  break;
-             default:
-                  fprintf(stderr, "COMBINE_EXT_alpha: %s\n",
-                                  _mesa_lookup_enum_by_nr(texUnit->Combine.ModeA));
+      switch (texUnit->Combine.ModeA)
+      {
+      case GL_MODULATE:
+         /* Arg0 * Arg1 == (A + 0) * C + 0 */
+         TEXENV_SETUP_ARG_A(alphaComb.SourceA,
+                            texUnit->Combine.SourceA[0],
+                            texUnit->Combine.OperandA[0],
+                            locala);
+         TEXENV_SETUP_MODE_A(alphaComb.ModeA,
+                             texUnit->Combine.OperandA[0]);
+         alphaComb.SourceB = GR_CMBX_ZERO;
+         alphaComb.ModeB = GR_FUNC_MODE_ZERO;
+         TEXENV_SETUP_ARG_A(alphaComb.SourceC,
+                            texUnit->Combine.SourceA[1],
+                            texUnit->Combine.OperandA[1],
+                            locala);
+         alphaComb.InvertC = TEXENV_OPERAND_INVERTED(
+             texUnit->Combine.OperandA[1]);
+         alphaComb.SourceD = GR_CMBX_ZERO;
+         break;
+      case GL_REPLACE:
+         /* Arg0 == (A + 0) * 1 + 0 */
+         TEXENV_SETUP_ARG_A(alphaComb.SourceA,
+                            texUnit->Combine.SourceA[0],
+                            texUnit->Combine.OperandA[0],
+                            locala);
+         TEXENV_SETUP_MODE_A(alphaComb.ModeA,
+                             texUnit->Combine.OperandA[0]);
+         alphaComb.SourceB = GR_CMBX_ZERO;
+         alphaComb.ModeB = GR_FUNC_MODE_ZERO;
+         alphaComb.SourceC = GR_CMBX_ZERO;
+         alphaComb.InvertC = FXTRUE;
+         alphaComb.SourceD = GR_CMBX_ZERO;
+         break;
+      case GL_ADD:
+         /* Arg0 + Arg1 = (A + B) * 1 + 0 */
+         TEXENV_SETUP_ARG_A(alphaComb.SourceA,
+                            texUnit->Combine.SourceA[0],
+                            texUnit->Combine.OperandA[0],
+                            locala);
+         TEXENV_SETUP_MODE_A(alphaComb.ModeA,
+                             texUnit->Combine.OperandA[0]);
+         TEXENV_SETUP_ARG_A(alphaComb.SourceB,
+                            texUnit->Combine.SourceA[1],
+                            texUnit->Combine.OperandA[1],
+                            locala);
+         TEXENV_SETUP_MODE_A(alphaComb.ModeB,
+                             texUnit->Combine.OperandA[1]);
+         alphaComb.SourceC = GR_CMBX_ZERO;
+         alphaComb.InvertC = FXTRUE;
+         alphaComb.SourceD = GR_CMBX_ZERO;
+         break;
+      default:
+         fprintf(stderr, "COMBINE_EXT_alpha: %s\n",
+                 _mesa_lookup_enum_by_nr(texUnit->Combine.ModeA));
       }
 
       fxMesa->Glide.grConstantColorValueExt(tmu,
-         (((GLuint)(envColor[0] * 255.0f))      ) |
-         (((GLuint)(envColor[1] * 255.0f)) <<  8) |
-         (((GLuint)(envColor[2] * 255.0f)) << 16) |
-         (((GLuint)(envColor[3] * 255.0f)) << 24));
+                                            (((GLuint)(envColor[0] * 255.0f))) |
+                                                (((GLuint)(envColor[1] * 255.0f)) << 8) |
+                                                (((GLuint)(envColor[2] * 255.0f)) << 16) |
+                                                (((GLuint)(envColor[3] * 255.0f)) << 24));
       break;
 
    default:
-      if (TDFX_DEBUG & VERBOSE_DRIVER) {
-	 fprintf(stderr, "fxSetupTextureEnvNapalm_NoLock: %x Texture.EnvMode not yet supported\n",
-		 texUnit->EnvMode);
+      if (TDFX_DEBUG & VERBOSE_DRIVER)
+      {
+         fprintf(stderr, "fxSetupTextureEnvNapalm_NoLock: %x Texture.EnvMode not yet supported\n",
+                 texUnit->EnvMode);
       }
       return;
    }
@@ -616,24 +661,28 @@ fxSetupTextureEnvNapalm_NoLock(GLcontext * ctx, GLuint textureset, GLuint tmu, G
                                       colorComb.Invert);
 }
 
-
 /************************* Single Texture Set ***************************/
 
 static void
 fxSelectSingleTMUSrcNapalm_NoLock(fxMesaContext fxMesa, GLint tmu, FxBool LODblend)
 {
-   if (TDFX_DEBUG & VERBOSE_DRIVER) {
+   if (TDFX_DEBUG & VERBOSE_DRIVER)
+   {
       fprintf(stderr, "fxSelectSingleTMUSrcNapalm_NoLock(%d, %d)\n", tmu, LODblend);
    }
 
-   if (LODblend) {
+   if (LODblend)
+   {
       /* XXX todo - GR_CMBX_LOD_FRAC? */
       fxMesa->tmuSrc = FX_TMU_SPLIT;
    }
-   else {
-      if (tmu != FX_TMU1) {
+   else
+   {
+      if (tmu != FX_TMU1)
+      {
          /* disable tex1 */
-         if (fxMesa->haveTwoTMUs) {
+         if (fxMesa->haveTwoTMUs)
+         {
             fxMesa->Glide.grTexAlphaCombineExt(FX_TMU1,
                                                GR_CMBX_ZERO,
                                                GR_FUNC_MODE_ZERO,
@@ -658,9 +707,10 @@ fxSelectSingleTMUSrcNapalm_NoLock(fxMesaContext fxMesa, GLint tmu, FxBool LODble
                                                FXFALSE);
          }
 
-	 fxMesa->tmuSrc = FX_TMU0;
+         fxMesa->tmuSrc = FX_TMU0;
       }
-      else {
+      else
+      {
 #if 1
          grTexCombine(GR_TMU0,
                       GR_COMBINE_FUNCTION_BLEND,
@@ -695,13 +745,13 @@ fxSelectSingleTMUSrcNapalm_NoLock(fxMesaContext fxMesa, GLint tmu, FxBool LODble
                                             FXFALSE);
 #endif
 
-	 fxMesa->tmuSrc = FX_TMU1;
+         fxMesa->tmuSrc = FX_TMU1;
       }
    }
 }
 
 static void
-fxSetupTextureSingleTMUNapalm_NoLock(GLcontext * ctx, GLuint textureset)
+fxSetupTextureSingleTMUNapalm_NoLock(GLcontext *ctx, GLuint textureset)
 {
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    GLuint unitsmode;
@@ -709,7 +759,8 @@ fxSetupTextureSingleTMUNapalm_NoLock(GLcontext * ctx, GLuint textureset)
    struct gl_texture_object *tObj = ctx->Texture.Unit[textureset]._Current;
    int tmu;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER) {
+   if (TDFX_DEBUG & VERBOSE_DRIVER)
+   {
       fprintf(stderr, "fxSetupTextureSingleTMUNapalm_NoLock(%d)\n", textureset);
    }
 
@@ -731,8 +782,8 @@ fxSetupTextureSingleTMUNapalm_NoLock(GLcontext * ctx, GLuint textureset)
    else
       unitsmode = fxGetTexSetConfiguration(ctx, NULL, tObj);
 
-/*    if(fxMesa->lastUnitsMode==unitsmode) */
-/*      return; */
+   /*    if(fxMesa->lastUnitsMode==unitsmode) */
+   /*      return; */
 
    fxMesa->lastUnitsMode = unitsmode;
 
@@ -741,7 +792,7 @@ fxSetupTextureSingleTMUNapalm_NoLock(GLcontext * ctx, GLuint textureset)
 
    if (TDFX_DEBUG & (VERBOSE_DRIVER | VERBOSE_TEXTURE))
       fprintf(stderr, "fxSetupTextureSingleTMUNapalm_NoLock: envmode is %s\n",
-	      _mesa_lookup_enum_by_nr(ctx->Texture.Unit[textureset].EnvMode));
+              _mesa_lookup_enum_by_nr(ctx->Texture.Unit[textureset].EnvMode));
 
    /* [dBorca] Hack alert:
     * what if we're in split mode? (LODBlend)
@@ -750,11 +801,10 @@ fxSetupTextureSingleTMUNapalm_NoLock(GLcontext * ctx, GLuint textureset)
    fxSetupTextureEnvNapalm_NoLock(ctx, textureset, tmu, GL_TRUE);
 }
 
-
 /************************* Double Texture Set ***************************/
 
 static void
-fxSetupTextureDoubleTMUNapalm_NoLock(GLcontext * ctx)
+fxSetupTextureDoubleTMUNapalm_NoLock(GLcontext *ctx)
 {
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    tfxTexInfo *ti0, *ti1;
@@ -763,7 +813,8 @@ fxSetupTextureDoubleTMUNapalm_NoLock(GLcontext * ctx)
    GLuint unitsmode;
    int tmu0 = 0, tmu1 = 1;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER) {
+   if (TDFX_DEBUG & VERBOSE_DRIVER)
+   {
       fprintf(stderr, "fxSetupTextureDoubleTMUNapalm_NoLock(...)\n");
    }
 
@@ -777,8 +828,8 @@ fxSetupTextureDoubleTMUNapalm_NoLock(GLcontext * ctx)
 
    unitsmode = fxGetTexSetConfiguration(ctx, tObj0, tObj1);
 
-/*    if(fxMesa->lastUnitsMode==unitsmode) */
-/*      return; */
+   /*    if(fxMesa->lastUnitsMode==unitsmode) */
+   /*      return; */
 
    fxMesa->lastUnitsMode = unitsmode;
 
@@ -787,11 +838,11 @@ fxSetupTextureDoubleTMUNapalm_NoLock(GLcontext * ctx)
 
    if (TDFX_DEBUG & (VERBOSE_DRIVER | VERBOSE_TEXTURE))
       fprintf(stderr, "fxSetupTextureDoubleTMUNapalm_NoLock: envmode is %s/%s\n",
-	      _mesa_lookup_enum_by_nr(ctx->Texture.Unit[0].EnvMode),
-	      _mesa_lookup_enum_by_nr(ctx->Texture.Unit[1].EnvMode));
+              _mesa_lookup_enum_by_nr(ctx->Texture.Unit[0].EnvMode),
+              _mesa_lookup_enum_by_nr(ctx->Texture.Unit[1].EnvMode));
 
-
-   if ((ti0->whichTMU == FX_TMU1) || (ti1->whichTMU == FX_TMU0)) {
+   if ((ti0->whichTMU == FX_TMU1) || (ti1->whichTMU == FX_TMU0))
+   {
       tmu0 = 1;
       tmu1 = 0;
    }
@@ -805,11 +856,12 @@ fxSetupTextureDoubleTMUNapalm_NoLock(GLcontext * ctx)
 /************************* No Texture ***************************/
 
 static void
-fxSetupTextureNoneNapalm_NoLock(GLcontext * ctx)
+fxSetupTextureNoneNapalm_NoLock(GLcontext *ctx)
 {
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER) {
+   if (TDFX_DEBUG & VERBOSE_DRIVER)
+   {
       fprintf(stderr, "fxSetupTextureNoneNapalm_NoLock(...)\n");
    }
 

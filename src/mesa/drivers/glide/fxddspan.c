@@ -173,7 +173,6 @@
 		rgba[3] = 0xff;                                                    \
 	} while (0)
 
-
 /* 32 bit, ARGB8888 color spanline and pixel functions */
 
 #undef LFB_MODE
@@ -202,7 +201,6 @@
 		rgba[2] = (p >> 0) & 0xff;                                     \
 		rgba[3] = (p >> 24) & 0xff;                                    \
 	} while (0)
-
 
 /************************************************************************/
 /*****                    Depth functions                           *****/
@@ -262,7 +260,6 @@
 #define READ_DEPTH(d, _x, _y) \
 	d = *(GLushort *)(buf + _x * BYTESPERPIXEL + _y * pitch)
 
-
 /* 24 bit, depth spanline and pixel functions (for use w/ stencil) */
 /* [dBorca] Hack alert:
  * This is evil. The incoming Mesa's 24bit depth value
@@ -285,7 +282,6 @@
 
 #define READ_DEPTH(d, _x, _y) \
 	d = (*(GLuint *)(buf + _x * BYTESPERPIXEL + _y * pitch)) & 0xffffff
-
 
 /* 32 bit, depth spanline and pixel functions (for use w/o stencil) */
 /* [dBorca] Hack alert:
