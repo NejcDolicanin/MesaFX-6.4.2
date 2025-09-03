@@ -106,14 +106,7 @@ CFLAGS += -m32 -march=i586 -mtune=i686 \
 AR = ar
 ARFLAGS = crus
 
-#Nejc
-#UNLINK = del $(subst /,\,$(1))
-#ifneq ($(wildcard $(addsuffix /rm.exe,$(subst ;, ,$(PATH)))),)
-#UNLINK = $(RM) $(1)
-#endif
-#ifneq ($(wildcard $(addsuffix /rm,$(subst :, ,$(PATH)))),)
-#UNLINK = $(RM) $(1)
-#endif
+#Nejc added rm, instead del
 UNLINK = rm -f $(1)
 
 include sources
@@ -125,6 +118,7 @@ CFLAGS += -DUSE_SSE_ASM
 CFLAGS += -DUSE_3DNOW_ASM
 #Nejc To prevent accidental use of sse2 (-msse2)
 CFLAGS += -mmmx -msse -m3dnow
+CFLAGS += -Wno-strict-aliasing
 
 X86_SOURCES += $(X86_API)
 else

@@ -97,12 +97,7 @@ export CFLAGS
 # Nejc Define MAKE explicitly to avoid path issues
 MAKE = make
 
-#Nejc
-#ifeq ($(wildcard $(addsuffix /rm.exe,$(subst ;, ,$(PATH)))),)
-#UNLINK = del $(subst /,\,$(1))
-#else
-#UNLINK = $(RM) $(1)
-#endif
+#Nejc added rm, instead del
 UNLINK = rm -f $(1)
 
 all: libgl

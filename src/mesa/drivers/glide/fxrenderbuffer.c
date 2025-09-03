@@ -333,7 +333,7 @@ void fxSetSpanFunctions(struct gl_renderbuffer *rb, const GLvisual *vis)
          rb->PutRow = fxWriteDepthSpan_Z24;
          rb->PutMonoRow = fxWriteMonoDepthSpan_Z24;
          rb->PutValues = fxWriteDepthPixels_Z24;
-         rb->PutMonoValues = NULL; /* Following DRI tdfx pattern */ // fxWriteMonoDepthPixels_Z24 not implemented
+         rb->PutMonoValues = fxWriteMonoDepthPixels_Z24;
       }
       else
       {
@@ -343,7 +343,7 @@ void fxSetSpanFunctions(struct gl_renderbuffer *rb, const GLvisual *vis)
          rb->PutRow = fxWriteDepthSpan_Z16;
          rb->PutMonoRow = fxWriteMonoDepthSpan_Z16;
          rb->PutValues = fxWriteDepthPixels_Z16;
-         rb->PutMonoValues = NULL; /*fxWriteMonoDepthPixels_Z16;*/
+         rb->PutMonoValues = fxWriteMonoDepthPixels_Z16;
       }
    }
    else if (rb->InternalFormat == GL_STENCIL_INDEX8_EXT)
@@ -354,7 +354,7 @@ void fxSetSpanFunctions(struct gl_renderbuffer *rb, const GLvisual *vis)
       rb->PutRow = fxWriteStencilSpan;
       rb->PutMonoRow = fxWriteMonoStencilSpan;
       rb->PutValues = fxWriteStencilPixels;
-      rb->PutMonoValues = NULL; /* Following DRI tdfx pattern */ // fxWriteMonoStencilPixels not implemented
+      rb->PutMonoValues = fxWriteMonoStencilPixels;
    }
 }
 
@@ -1292,26 +1292,26 @@ void fxWriteDepthPixels_Z24(GLcontext *ctx, struct gl_renderbuffer *rb,
  * Write mono depth pixels to 24-bit depth buffer - Not implemented
  * (This function is not implemented in the original code, but provided here for completeness.)
  */
-// void fxWriteMonoDepthPixels_Z24(GLcontext *ctx, struct gl_renderbuffer *rb,
-//                                 GLuint count, const GLint x[], const GLint y[],
-//                                 const void *value, const GLubyte *mask)
-// {
-//    fxMesaContext fxMesa = FX_CONTEXT(ctx);
-//    const GLuint depthVal = *((const GLuint *) value) & 0xffffff;
-//    GLint bottom = fxMesa->height - 1;
-//    GLuint i;
+void fxWriteMonoDepthPixels_Z24(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                GLuint count, const GLint x[], const GLint y[],
+                                const void *value, const GLubyte *mask)
+{
+   fxMesaContext fxMesa = FX_CONTEXT(ctx);
+   const GLuint depthVal = *((const GLuint *) value) & 0xffffff;
+   GLint bottom = fxMesa->height - 1;
+   GLuint i;
 
-//    if (TDFX_DEBUG & VERBOSE_DRIVER) {
-//       fprintf(stderr, "fxWriteMonoDepthPixels_Z24(%d)\n", count);
-//    }
+   if (TDFX_DEBUG & VERBOSE_DRIVER) {
+      fprintf(stderr, "fxWriteMonoDepthPixels_Z24(%d)\n", count);
+   }
 
-//    for (i = 0; i < count; i++) {
-//       if (!mask || mask[i]) {
-//          grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i],
-//                           GR_LFB_SRC_FMT_ZA16, 1, 1, FXFALSE, 4, &depthVal);
-//       }
-//    }
-// }
+   for (i = 0; i < count; i++) {
+      if (!mask || mask[i]) {
+         grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i],
+                          GR_LFB_SRC_FMT_ZA16, 1, 1, FXFALSE, 4, &depthVal);
+      }
+   }
+}
 
 /**
  * Read a row of 24-bit depth values
@@ -1569,31 +1569,31 @@ void fxWriteMonoStencilSpan(GLcontext *ctx, struct gl_renderbuffer *rb,
  * Write mono stencil pixels to stencil buffer
  * not implemented in the original code, but provided here for completeness.
  */
-// void fxWriteMonoStencilPixels(GLcontext *ctx, struct gl_renderbuffer *rb,
-//                               GLuint count, const GLint x[], const GLint y[],
-//                               const void *value, const GLubyte *mask)
-// {
-//    fxMesaContext fxMesa = FX_CONTEXT(ctx);
-//    const GLubyte stencilVal = *((const GLubyte *) value);
-//    GLint bottom = fxMesa->height - 1;
-//    GLuint i;
+void fxWriteMonoStencilPixels(GLcontext *ctx, struct gl_renderbuffer *rb,
+                              GLuint count, const GLint x[], const GLint y[],
+                              const void *value, const GLubyte *mask)
+{
+   fxMesaContext fxMesa = FX_CONTEXT(ctx);
+   const GLubyte stencilVal = *((const GLubyte *) value);
+   GLint bottom = fxMesa->height - 1;
+   GLuint i;
 
-//    if (TDFX_DEBUG & VERBOSE_DRIVER) {
-//       fprintf(stderr, "fxWriteMonoStencilPixels(%d)\n", count);
-//    }
+   if (TDFX_DEBUG & VERBOSE_DRIVER) {
+      fprintf(stderr, "fxWriteMonoStencilPixels(%d)\n", count);
+   }
 
-//    for (i = 0; i < count; i++) {
-//       if (!mask || mask[i]) {
-//          GLuint zs32;
-//          /* Read current depth/stencil value */
-//          grLfbReadRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i], 1, 1, 0, &zs32);
-//          /* Update stencil bits only */
-//          zs32 = (zs32 & 0x00ffffff) | (stencilVal << 24);
-//          grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i],
-//                           GR_LFB_SRC_FMT_ZA16, 1, 1, FXFALSE, 4, &zs32);
-//       }
-//    }
-// }
+   for (i = 0; i < count; i++) {
+      if (!mask || mask[i]) {
+         GLuint zs32;
+         /* Read current depth/stencil value */
+         grLfbReadRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i], 1, 1, 0, &zs32);
+         /* Update stencil bits only */
+         zs32 = (zs32 & 0x00ffffff) | (stencilVal << 24);
+         grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i],
+                          GR_LFB_SRC_FMT_ZA16, 1, 1, FXFALSE, 4, &zs32);
+      }
+   }
+}
 
 /**
  * Read a row of stencil values

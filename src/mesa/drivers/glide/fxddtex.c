@@ -2050,7 +2050,7 @@ fxDDTestProxyTexImage(GLcontext *ctx, GLenum target,
 void fxInitTextureFuncs(struct dd_function_table *functions)
 {
    functions->BindTexture = fxDDTexBind;
-   functions->NewTextureObject = fxDDNewTextureObject;
+   functions->NewTextureObject = fxDDNewTextureObject; 
    functions->DeleteTexture = fxDDTexDel;
    functions->TexEnv = fxDDTexEnv;
    functions->TexParameter = fxDDTexParam;
@@ -2062,7 +2062,12 @@ void fxInitTextureFuncs(struct dd_function_table *functions)
    functions->IsTextureResident = fxDDIsTextureResident;
    functions->CompressedTexImage2D = fxDDCompressedTexImage2D;
    functions->CompressedTexSubImage2D = fxDDCompressedTexSubImage2D;
-   functions->UpdateTexturePalette = fxDDTexPalette;
+   functions->UpdateTexturePalette = fxDDTexPalette;  
 
-   functions->FreeTexImageData = _mesa_free_texmemory; /*NEJC DO I NEED THIS???? Yes! without it, it crashes on GameExit*/
+   /*
+   Nejc - Since MesaGlide uses _mesa_malloc, 
+   not mesas default _mesa_alloc_texmemory() 512byte aligment, 
+   you need to use _mesa_free_texmemory instead of `_mesa_free_texture_image_data`
+   */
+   functions->FreeTexImageData = _mesa_free_texmemory;
 }

@@ -74,7 +74,6 @@ static int glbTotNumCtx = 0;
 static GrHwConfiguration glbHWConfig;
 static int glbCurrentBoard = 0;
 
-#if defined(__WIN32__)
 static int
 cleangraphics(void)
 {
@@ -83,13 +82,6 @@ cleangraphics(void)
 
    return 0;
 }
-#elif defined(__linux__)
-static void
-cleangraphics(void)
-{
-   glbTotNumCtx = 1;
-   fxMesaDestroyContext(fxMesaCurrentCtx);
-}
 
 static void
 cleangraphics_handler(int s)
@@ -97,10 +89,8 @@ cleangraphics_handler(int s)
    fprintf(stderr, "fxmesa: ERROR: received a not handled signal %d\n", s);
 
    cleangraphics();
-   /*    abort(); */
    exit(1);
 }
-#endif
 
 /*
  * Query 3Dfx hardware presence/kind
@@ -442,8 +432,7 @@ fxMesaCreateContext(GLuint win,
    }
 
    grSstSelect(glbCurrentBoard);
-   /* Pass to glide we are OpenGL */
-   grEnable(GR_OPENGL_MODE_EXT); /* [koolsmoky] */
+   grEnable(GR_OPENGL_MODE_EXT); /* Pass to glide we are OpenGL */
    voodoo = &glbHWConfig.SSTs[glbCurrentBoard];
 
    if (TDFX_DEBUG & VERBOSE_DRIVER)
@@ -816,14 +805,11 @@ fxMesaCreateContext(GLuint win,
    fxInitTextureFuncs(&functions);
 
    /* NEJC - HOW TDFX inits*/
-   /* Init default driver functions then plug in our tdfx-specific functions
-    * (the texture functions are especially important)
-    */
    /*
-   _mesa_init_driver_functions(&functions);
-   tdfxDDInitDriverFuncs(mesaVis, &functions);
-   tdfxInitTextureFuncs(&functions);
-   tdfxInitRenderFuncs(&functions);
+      _mesa_init_driver_functions(&functions);
+      tdfxDDInitDriverFuncs(mesaVis, &functions);
+      tdfxInitTextureFuncs(&functions);
+      tdfxInitRenderFuncs(&functions);
    */
 
    if (TDFX_DEBUG & VERBOSE_DRIVER)
@@ -876,7 +862,6 @@ fxMesaCreateContext(GLuint win,
 
    /* Nejc: Use new framebuffer infrastructure with renderbuffers */
    fxMesa->glBuffer = fxNewFramebuffer(ctx, fxMesa->glVis);
-   /* OLD   fxMesa->glBuffer = _mesa_create_framebuffer(fxMesa->glVis);*/
 
    if (!fxMesa->glBuffer)
    {
@@ -1040,7 +1025,7 @@ fxMesaDestroyContext(fxMesaContext fxMesa)
    fxDDDestroyFxMesaContext(fxMesa); /* must be before _mesa_destroy_context */
    _mesa_destroy_visual(fxMesa->glVis);
    _mesa_destroy_context(fxMesa->glCtx);
-   _mesa_destroy_framebuffer(fxMesa->glBuffer);
+   _mesa_destroy_framebuffer(fxMesa->glBuffer); /*Nejc ToDo - we now use fxFramebuffer so check this*/
    fxTMClose(fxMesa); /* must be after _mesa_destroy_context */
 
    FREE(fxMesa);
@@ -1145,8 +1130,8 @@ fxCloseHardware(void)
    {
       if (glbTotNumCtx == 0)
       {
-         // Added for openGl
-         grDisable(GR_OPENGL_MODE_EXT);
+
+         grDisable(GR_OPENGL_MODE_EXT); /* Added for openGl */
          grGlideShutdown();
          glbGlideInitialized = 0;
       }

@@ -127,9 +127,9 @@ extern void fxWriteMonoDepthSpan_Z24(GLcontext *ctx, struct gl_renderbuffer *rb,
 extern void fxWriteDepthPixels_Z24(GLcontext *ctx, struct gl_renderbuffer *rb,
                                    GLuint count, const GLint x[], const GLint y[],
                                    const void *values, const GLubyte *mask);
-// extern void fxWriteMonoDepthPixels_Z24(GLcontext *ctx, struct gl_renderbuffer *rb,
-//                                        GLuint count, const GLint x[], const GLint y[],
-//                                        const void *value, const GLubyte *mask);
+extern void fxWriteMonoDepthPixels_Z24(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                       GLuint count, const GLint x[], const GLint y[],
+                                       const void *value, const GLubyte *mask);
 extern void fxReadDepthSpan_Z16(GLcontext *ctx, struct gl_renderbuffer *rb,
                                 GLuint count, GLint x, GLint y, void *values);
 extern void fxReadDepthPixels_Z16(GLcontext *ctx, struct gl_renderbuffer *rb,
@@ -161,8 +161,8 @@ extern void fxWriteMonoStencilSpan(GLcontext *ctx, struct gl_renderbuffer *rb,
 extern void fxWriteStencilPixels(GLcontext *ctx, struct gl_renderbuffer *rb,
                                  GLuint count, const GLint x[], const GLint y[],
                                  const void *values, const GLubyte *mask);
-// extern void fxWriteMonoStencilPixels(GLcontext *ctx, struct gl_renderbuffer *rb,
-//                                      GLuint count, const GLint x[], const GLint y[],
-//                                      const void *value, const GLubyte *mask);
+extern void fxWriteMonoStencilPixels(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                     GLuint count, const GLint x[], const GLint y[],
+                                     const void *value, const GLubyte *mask);
 
 // #endif /* FXRENDERBUFFER_H */

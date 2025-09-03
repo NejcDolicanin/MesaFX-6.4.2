@@ -2304,31 +2304,6 @@ void fxSetupDDPointers_PreContext(struct dd_function_table *functions, fxMesaCon
     * but we can set up the basic span infrastructure that Mesa needs */
    functions->GetBufferSize = fxDDGetBufferSize;
    functions->Viewport = fxDDViewport;
-
-   /* Set up essential texture functions that Mesa needs during context creation */
-   /* Mesa calls NewTextureObject during _mesa_init_texture() to create default textures */
-   /* functions->NewTextureObject = fxDDNewTextureObject; */
-   /*functions->DeleteTexture = fxDDTexDel;*/
-   /*functions->ChooseTextureFormat = fxDDChooseTextureFormat;*/
-   // functions->FreeTexImageData = _mesa_free_texmemory; /*NEJC DO I NEED THIS???? Yes! without it, it crashes on GameExit*/
-
-   /* Set up essential texture functions that Mesa needs during context creation */
-   /* Mesa calls NewTextureObject during _mesa_init_texture() to create default textures */
-   /* fxInitTextureFuncs( struct dd_function_table *functions ) */
-   // functions->BindTexture = fxDDTexBind;
-   // functions->NewTextureObject = fxDDNewTextureObject;
-   // functions->DeleteTexture = fxDDTexDel;
-   // functions->TexEnv = fxDDTexEnv;
-   // functions->TexParameter = fxDDTexParam;
-   // functions->ChooseTextureFormat = fxDDChooseTextureFormat;
-   // functions->TexImage1D = fxDDTexImage1D;
-   // functions->TexSubImage1D = fxDDTexSubImage1D;
-   // functions->TexImage2D = fxDDTexImage2D;
-   // functions->TexSubImage2D = fxDDTexSubImage2D;
-   // functions->IsTextureResident = fxDDIsTextureResident;
-   // functions->CompressedTexImage2D = fxDDCompressedTexImage2D;
-   // functions->CompressedTexSubImage2D = fxDDCompressedTexSubImage2D;
-   // functions->UpdateTexturePalette = fxDDTexPalette;
 }
 
 void fxSetupDDPointers(GLcontext *ctx)
@@ -2372,7 +2347,6 @@ void fxSetupDDPointers(GLcontext *ctx)
 
    /* Nejc - Half here are for textures ?????*/
    ctx->Driver.Finish = fxDDFinish;
-   // ctx->Driver.Flush = NULL;
    ctx->Driver.ChooseTextureFormat = fxDDChooseTextureFormat;
    ctx->Driver.NewTextureObject = fxDDNewTextureObject;
    ctx->Driver.TexImage1D = fxDDTexImage1D;
@@ -2408,7 +2382,8 @@ void fxSetupDDPointers(GLcontext *ctx)
       ctx->Driver.StencilOp = fxDDStencilOp;
    }
 
-   /* Swrast hooks for imaging extensions:
+   /*
+    * Swrast hooks for imaging extensions:
     */
    ctx->Driver.CopyColorTable = _swrast_CopyColorTable;
    ctx->Driver.CopyColorSubTable = _swrast_CopyColorSubTable;

@@ -282,26 +282,20 @@
 
 #define READ_DEPTH(d, _x, _y) \
 	d = (*(GLuint *)(buf + _x * BYTESPERPIXEL + _y * pitch)) & 0xffffff
-
-/* 32 bit, depth spanline and pixel functions (for use w/o stencil) */
-/* [dBorca] Hack alert:
- * This is more evil. We make Mesa run in 32bit depth, but
- * tha Voodoo HW can only handle 24bit depth. Well, exploiting
- * the pixel pipeline, we can achieve 24:8 format for greater
- * precision...
- * If anyone tells me how to really store 32bit values into the
- * depth buffer, I'll write the *_Z32 routines. Howver, bear in
- * mind that means running without stencil!
- */
-
+	
+/* Nejc - New renderbuffer stuff */
 #define FLUSH_BATCH(fxMesa)
 #define LOCK_HARDWARE(fxMesa)
 #define UNLOCK_HARDWARE(fxMesa)
 
+
+/**********************************************************************/
+/*                    Locking for swrast                              */
+/**********************************************************************/
 void fxSpanRenderStart(GLcontext *ctx)
 {
 	fxMesaContext fxMesa = FX_CONTEXT(ctx);
-	FLUSH_BATCH(fxMesa);
+	// FLUSH_BATCH(fxMesa);
 	LOCK_HARDWARE(fxMesa);
 }
 
@@ -311,6 +305,7 @@ void fxSpanRenderFinish(GLcontext *ctx)
 	_swrast_flush(ctx);
 	UNLOCK_HARDWARE(fxMesa);
 }
+
 
 /* Set the buffer used for reading */
 static void fxDDSetBuffer(GLcontext *ctx, GLframebuffer *buffer, GLuint bufferBit)
@@ -331,7 +326,9 @@ static void fxDDSetBuffer(GLcontext *ctx, GLframebuffer *buffer, GLuint bufferBi
 	}
 }
 
-/* Nejc: Updated for Mesa 6.3+ - span functions now handled via renderbuffer interface */
+/**********************************************************************/
+/*                    Initialize swrast device driver                 */
+/**********************************************************************/
 void fxDDInitSpanFuncs(GLcontext *ctx)
 {
 	/* Mesa 6.3+ uses renderbuffer GetRow/PutRow functions instead of span functions */

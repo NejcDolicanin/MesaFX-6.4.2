@@ -207,7 +207,6 @@ static int curPFD = 0;
 static HDC hDC;
 static HWND hWND;
 
-static GLboolean haveDualHead;
 
 /* For the in-window-rendering hack */
 
@@ -215,12 +214,6 @@ static GLboolean haveDualHead;
 /* Apparently GR_CONTROL_RESIZE can be ignored. OK? */
 #define GR_CONTROL_RESIZE -1
 #endif
-
-static GLboolean gdiWindowHack;
-static void *dibSurfacePtr;
-static BITMAPINFO *dibBMI;
-static HBITMAP dibHBM;
-static HWND dibWnd;
 
 static int
 env_check(const char *var, int val)
@@ -267,6 +260,25 @@ __wglMonitor(HWND hwnd, UINT message, UINT wParam, LONG lParam)
       case WM_ACTIVATE:
          break;
       case WM_SHOWWINDOW:
+         break;
+      case WM_CLOSE:
+         /* Nejc - Handle window close - if we still have a context, destroy it now */
+         if (ctx) {
+            fxMesaDestroyContext(ctx);
+            ctx = NULL;
+            hDC = 0;
+         }
+         /* nejc - Restore window procedure before window closes */
+         if (hWNDOldProc) {
+            SetWindowLong(hwnd, GWL_WNDPROC, (LONG)hWNDOldProc);
+            hWNDOldProc = NULL;
+         }
+         break;
+      case WM_DESTROY:
+         /* Nejc - Ensure window procedure is restored on destruction */
+         if (ctx) {
+            SetWindowLong(hwnd, GWL_WNDPROC, (LONG)hWNDOldProc);
+         }
          break;
       case WM_SYSKEYDOWN:
       case WM_SYSCHAR:
@@ -350,12 +362,6 @@ wglCreateContext(HDC hdc)
       }
    }
 
-   /*if (getenv("SST_DUALHEAD"))
-      haveDualHead =
-         ((atoi(getenv("SST_DUALHEAD")) == 1) ? GL_TRUE : GL_FALSE);
-   else
-      haveDualHead = GL_FALSE;*/
-
    if (error)
    {
       SetLastError(0);
@@ -383,10 +389,14 @@ wglDeleteContext(HGLRC hglrc)
 {
    if (ctx && hglrc == (HGLRC)1)
    {
-
       fxMesaDestroyContext(ctx);
 
-      SetWindowLong(WindowFromDC(hDC), GWL_WNDPROC, (LONG)hWNDOldProc);
+      /* Nejc - Only restore window procedure if we haven't already done it in WM_DESTROY */
+      if (hWNDOldProc)
+      {
+         SetWindowLong(WindowFromDC(hDC), GWL_WNDPROC, (LONG)hWNDOldProc);
+         hWNDOldProc = NULL; /* Clear to prevent double restoration */
+      }
 
       ctx = NULL;
       hDC = 0;
@@ -657,7 +667,15 @@ GLAPI BOOL GLAPIENTRY
 wglMakeCurrent(HDC hdc, HGLRC hglrc)
 {
    if ((hdc == NULL) && (hglrc == NULL))
+   {
+      /* Nejc - Context is being deactivated, restore window procedure immediately */
+      if (ctx && hWNDOldProc)
+      {
+         SetWindowLong(hWND, GWL_WNDPROC, (LONG)hWNDOldProc);
+         hWNDOldProc = NULL; /* Clear to prevent double restoration */
+      }
       return TRUE;
+   }
 
    if (!ctx || hglrc != (HGLRC)1 || WindowFromDC(hdc) != hWND)
    {
@@ -1035,23 +1053,23 @@ wglSetPixelFormat(HDC hdc, int iPixelFormat, const PIXELFORMATDESCRIPTOR *ppfd)
    qt_valid_pix = pfd_tablen();
 
    /* Check for forced 16-bit pixel format registry/environment variable */
-   if (fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_PIX") != NULL)
-   {
-      int boardType = fxMesaSelectCurrentBoard(0);
-      if (boardType == GR_SSTTYPE_Voodoo5 || boardType == GR_SSTTYPE_Voodoo4)
-      {
-         /* Force 16-bit pixel format - override any requested format */
-         if (ppfd && (ppfd->dwFlags & PFD_DOUBLEBUFFER))
-         {
-            curPFD = 2; /* 16-bit RGB565 double buffer */
-         }
-         else
-         {
-            curPFD = 1; /* 16-bit RGB565 single buffer */
-         }
-         return TRUE;
-      }
-   }
+   // if (fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_PIX") != NULL)
+   // {
+   //    int boardType = fxMesaSelectCurrentBoard(0);
+   //    if (boardType == GR_SSTTYPE_Voodoo5 || boardType == GR_SSTTYPE_Voodoo4)
+   //    {
+   //       /* Force 16-bit pixel format - override any requested format */
+   //       if (ppfd && (ppfd->dwFlags & PFD_DOUBLEBUFFER))
+   //       {
+   //          curPFD = 2; /* 16-bit RGB565 double buffer */
+   //       }
+   //       else
+   //       {
+   //          curPFD = 1; /* 16-bit RGB565 single buffer */
+   //       }
+   //       return TRUE;
+   //    }
+   // }
 
    if (iPixelFormat < 1 || iPixelFormat > qt_valid_pix)
    {
