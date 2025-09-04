@@ -1423,6 +1423,8 @@ adjust2DRatio(GLcontext *ctx,
    return GL_TRUE;
 }
 
+/* This is exactly the spot where MesaFX is only preparing CPU-side copies of the texture, not yet uploading them into Glide/3dfx TMU. */
+/* The actual upload usually happens lazily later (in fxDownloadTexObj() / fxTMDownloadMipMapLevel()) when the texture is first bound and used. */
 void fxDDTexImage2D(GLcontext *ctx, GLenum target, GLint level,
                     GLint internalFormat, GLint width, GLint height, GLint border,
                     GLenum format, GLenum type, const GLvoid *pixels,
@@ -1798,9 +1800,13 @@ void fxDDTexSubImage2D(GLcontext *ctx, GLenum target, GLint level,
    }
 
    if (ti->validated && ti->isInTM && !texObj->GenerateMipmap)
+   {
       fxTMReloadMipMapLevel(fxMesa, texObj, level);
+   }
    else
+   {
       fxTexInvalidate(ctx, texObj);
+   }
 }
 
 void fxDDCompressedTexImage2D(GLcontext *ctx, GLenum target,
@@ -1995,9 +2001,13 @@ void fxDDCompressedTexSubImage2D(GLcontext *ctx, GLenum target,
    }
 
    if (ti->validated && ti->isInTM)
+   {
       fxTMReloadMipMapLevel(fxMesa, texObj, level);
+   }
    else
+   {
       fxTexInvalidate(ctx, texObj);
+   }
 }
 
 void fxDDTexImage1D(GLcontext *ctx, GLenum target, GLint level,
@@ -2050,7 +2060,7 @@ fxDDTestProxyTexImage(GLcontext *ctx, GLenum target,
 void fxInitTextureFuncs(struct dd_function_table *functions)
 {
    functions->BindTexture = fxDDTexBind;
-   functions->NewTextureObject = fxDDNewTextureObject; 
+   functions->NewTextureObject = fxDDNewTextureObject;
    functions->DeleteTexture = fxDDTexDel;
    functions->TexEnv = fxDDTexEnv;
    functions->TexParameter = fxDDTexParam;
@@ -2062,11 +2072,11 @@ void fxInitTextureFuncs(struct dd_function_table *functions)
    functions->IsTextureResident = fxDDIsTextureResident;
    functions->CompressedTexImage2D = fxDDCompressedTexImage2D;
    functions->CompressedTexSubImage2D = fxDDCompressedTexSubImage2D;
-   functions->UpdateTexturePalette = fxDDTexPalette;  
+   functions->UpdateTexturePalette = fxDDTexPalette;
 
    /*
-   Nejc - Since MesaGlide uses _mesa_malloc, 
-   not mesas default _mesa_alloc_texmemory() 512byte aligment, 
+   Nejc - Since MesaGlide uses _mesa_malloc,
+   not mesas default _mesa_alloc_texmemory() 512byte aligment,
    you need to use _mesa_free_texmemory instead of `_mesa_free_texture_image_data`
    */
    functions->FreeTexImageData = _mesa_free_texmemory;
