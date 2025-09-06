@@ -867,6 +867,7 @@ void fxReadRGBASpan_ARGB1555(GLcontext *ctx, struct gl_renderbuffer *rb,
       GLuint extraPixel = count & 1;
       GLuint n32 = count - extraPixel;
 
+      /* Read two pixels at once and correct if needed, tiny bit faster */
       for (i = j = 0; i < n32; i += 2, j++)
       {
          GLuint pixel = data32[j];
