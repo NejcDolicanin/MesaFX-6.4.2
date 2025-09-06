@@ -261,104 +261,14 @@ fxNewStencilRenderbuffer(GLcontext *ctx, GLuint name)
    return rb;
 }
 
-/**
- * Set up span functions for a renderbuffer based on its format
- * Following the tdfx DRI driver pattern - no context needed during setup
- */
-void fxSetSpanFunctions(struct gl_renderbuffer *rb, const GLvisual *vis)
-{
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxSetSpanFunctions(%p, format=%s)\n",
-              (void *)rb, _mesa_lookup_enum_by_nr(rb->InternalFormat));
-   }
-
-   if (rb->InternalFormat == GL_RGBA || rb->InternalFormat == GL_RGB)
-   {
-      /* Color buffer - determine format from visual like tdfx driver */
-      if (vis->redBits == 8 && vis->greenBits == 8 && vis->blueBits == 8 && vis->alphaBits == 8)
-      {
-         /* 32-bit ARGB8888 */
-         rb->GetRow = fxReadRGBASpan_ARGB8888;
-         rb->GetValues = fxReadRGBAPixels_ARGB8888;
-         rb->PutRow = fxWriteRGBASpan_ARGB8888;
-         rb->PutRowRGB = fxWriteRGBSpan_ARGB8888;
-         rb->PutMonoRow = fxWriteMonoRGBASpan_ARGB8888;
-         rb->PutValues = fxWriteRGBAPixels_ARGB8888;
-         rb->PutMonoValues = fxWriteMonoRGBAPixels_ARGB8888;
-      }
-      else if (vis->redBits == 5 && vis->greenBits == 6 && vis->blueBits == 5)
-      {
-         /* 16-bit RGB565 */
-         rb->GetRow = fxReadRGBASpan_RGB565;
-         rb->GetValues = fxReadRGBAPixels_RGB565;
-         rb->PutRow = fxWriteRGBASpan_RGB565;
-         rb->PutRowRGB = fxWriteRGBSpan_RGB565;
-         rb->PutMonoRow = fxWriteMonoRGBASpan_RGB565;
-         rb->PutValues = fxWriteRGBAPixels_RGB565;
-         rb->PutMonoValues = fxWriteMonoRGBAPixels_RGB565;
-      }
-      else if (vis->redBits == 5 && vis->greenBits == 5 && vis->blueBits == 5)
-      {
-         /* 15-bit ARGB1555 */
-         rb->GetRow = fxReadRGBASpan_ARGB1555;
-         rb->GetValues = fxReadRGBAPixels_ARGB1555;
-         rb->PutRow = fxWriteRGBASpan_ARGB1555;
-         rb->PutRowRGB = fxWriteRGBSpan_ARGB1555;
-         rb->PutMonoRow = fxWriteMonoRGBASpan_ARGB1555;
-         rb->PutValues = fxWriteRGBAPixels_ARGB1555;
-         rb->PutMonoValues = fxWriteMonoRGBAPixels_ARGB1555;
-      }
-      else
-      {
-         /* Default to 16-bit RGB565 */
-         rb->GetRow = fxReadRGBASpan_RGB565;
-         rb->GetValues = fxReadRGBAPixels_RGB565;
-         rb->PutRow = fxWriteRGBASpan_RGB565;
-         rb->PutRowRGB = fxWriteRGBSpan_RGB565;
-         rb->PutMonoRow = fxWriteMonoRGBASpan_RGB565;
-         rb->PutValues = fxWriteRGBAPixels_RGB565;
-         rb->PutMonoValues = fxWriteMonoRGBAPixels_RGB565;
-      }
-   }
-   else if (rb->InternalFormat == GL_DEPTH_COMPONENT16 ||
-            rb->InternalFormat == GL_DEPTH_COMPONENT24)
-   {
-      /* Depth buffer - select functions based on actual format */
-      if (rb->InternalFormat == GL_DEPTH_COMPONENT24)
-      {
-         /* 24-bit depth functions */
-         rb->GetRow = fxReadDepthSpan_Z24;
-         rb->GetValues = fxReadDepthPixels_Z24;
-         rb->PutRow = fxWriteDepthSpan_Z24;
-         rb->PutMonoRow = fxWriteMonoDepthSpan_Z24;
-         rb->PutValues = fxWriteDepthPixels_Z24;
-         rb->PutMonoValues = fxWriteMonoDepthPixels_Z24;
-      }
-      else
-      {
-         /* 16-bit depth functions */
-         rb->GetRow = fxReadDepthSpan_Z16;
-         rb->GetValues = fxReadDepthPixels_Z16;
-         rb->PutRow = fxWriteDepthSpan_Z16;
-         rb->PutMonoRow = fxWriteMonoDepthSpan_Z16;
-         rb->PutValues = fxWriteDepthPixels_Z16;
-         rb->PutMonoValues = fxWriteMonoDepthPixels_Z16;
-      }
-   }
-   else if (rb->InternalFormat == GL_STENCIL_INDEX8_EXT)
-   {
-      /* Stencil buffer - following DRI tdfx pattern */
-      rb->GetRow = fxReadStencilSpan;
-      rb->GetValues = fxReadStencilPixels;
-      rb->PutRow = fxWriteStencilSpan;
-      rb->PutMonoRow = fxWriteMonoStencilSpan;
-      rb->PutValues = fxWriteStencilPixels;
-      rb->PutMonoValues = fxWriteMonoStencilPixels;
-   }
-}
-
 /* Mesa 6.3+ Renderbuffer PutRow/GetRow Functions */
+
+/* Helper: convenience to get visual sizes from ctx */
+static inline void fx_get_depth_stencil_sizes(GLcontext *ctx, GLuint *depth_size, GLuint *stencil_size)
+{
+   *depth_size = ctx->Visual.depthBits;
+   *stencil_size = ctx->Visual.stencilBits;
+}
 
 /**
  * Read a row of ARGB8888 pixels from color buffer
@@ -369,20 +279,15 @@ void fxReadRGBASpan_ARGB8888(GLcontext *ctx, struct gl_renderbuffer *rb,
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    GLubyte(*rgba)[4] = (GLubyte(*)[4])values;
    GLuint i;
+   GLint fy = fxMesa->height - 1 - y;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxReadRGBASpan_ARGB8888(%d, %d, %d)\n", count, x, y);
-   }
+   grLfbReadRegion(fxMesa->currentFB, x, fy, count, 1, count * 4, rgba);
 
-   grLfbReadRegion(fxMesa->currentFB, x, fxMesa->height - 1 - y, count, 1, count * 4, rgba);
-
-   /* Convert from BGRA to RGBA */
    for (i = 0; i < count; i++)
    {
-      GLubyte c = rgba[i][0];
-      rgba[i][0] = rgba[i][2];
-      rgba[i][2] = c;
+      GLubyte tmp = rgba[i][0];
+      rgba[i][0] = rgba[i][2]; // R
+      rgba[i][2] = tmp;        // B
    }
 }
 
@@ -397,21 +302,15 @@ void fxReadRGBAPixels_ARGB8888(GLcontext *ctx, struct gl_renderbuffer *rb,
    GLubyte(*rgba)[4] = (GLubyte(*)[4])values;
    GLuint i;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxReadRGBAPixels_ARGB8888(%d)\n", count);
-   }
-
    for (i = 0; i < count; i++)
    {
       GLuint pixel;
       grLfbReadRegion(fxMesa->currentFB, x[i], fxMesa->height - 1 - y[i], 1, 1, 4, &pixel);
 
-      /* Convert from BGRA to RGBA */
-      rgba[i][0] = (pixel >> 16) & 0xff; /* R */
-      rgba[i][1] = (pixel >> 8) & 0xff;  /* G */
-      rgba[i][2] = pixel & 0xff;         /* B */
-      rgba[i][3] = (pixel >> 24) & 0xff; /* A */
+      rgba[i][0] = (pixel >> 16) & 0xFF; // R
+      rgba[i][1] = (pixel >> 8) & 0xFF;  // G
+      rgba[i][2] = pixel & 0xFF;         // B
+      rgba[i][3] = (pixel >> 24) & 0xFF; // A
    }
 }
 
@@ -426,40 +325,20 @@ void fxWriteRGBASpan_ARGB8888(GLcontext *ctx, struct gl_renderbuffer *rb,
    const GLubyte(*rgba)[4] = (const GLubyte(*)[4])values;
    GLuint pixels[MAX_WIDTH];
    GLuint i;
+   GLint fy = fxMesa->height - 1 - y;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxWriteRGBASpan_ARGB8888(%d, %d, %d)\n", count, x, y);
-   }
-
-   /* Convert from RGBA to BGRA */
    for (i = 0; i < count; i++)
-   {
       if (!mask || mask[i])
-      {
-         pixels[i] = (rgba[i][3] << 24) | /* A */
-                     (rgba[i][0] << 16) | /* R */
-                     (rgba[i][1] << 8) |  /* G */
-                     rgba[i][2];          /* B */
-      }
-   }
+         pixels[i] = (rgba[i][3] << 24) | (rgba[i][0] << 16) | (rgba[i][1] << 8) | rgba[i][2];
 
    if (mask)
    {
       for (i = 0; i < count; i++)
-      {
          if (mask[i])
-         {
-            grLfbWriteRegion(fxMesa->currentFB, x + i, fxMesa->height - 1 - y,
-                             GR_LFB_SRC_FMT_8888, 1, 1, FXFALSE, 4, &pixels[i]);
-         }
-      }
+            grLfbWriteRegion(fxMesa->currentFB, x + i, fy, GR_LFB_SRC_FMT_8888, 1, 1, FXFALSE, 4, &pixels[i]);
    }
    else
-   {
-      grLfbWriteRegion(fxMesa->currentFB, x, fxMesa->height - 1 - y,
-                       GR_LFB_SRC_FMT_8888, count, 1, FXFALSE, count * 4, pixels);
-   }
+      grLfbWriteRegion(fxMesa->currentFB, x, fy, GR_LFB_SRC_FMT_8888, count, 1, FXFALSE, count * 4, pixels);
 }
 
 /**
@@ -473,40 +352,20 @@ void fxWriteRGBSpan_ARGB8888(GLcontext *ctx, struct gl_renderbuffer *rb,
    const GLubyte(*rgb)[3] = (const GLubyte(*)[3])values;
    GLuint pixels[MAX_WIDTH];
    GLuint i;
+   GLint fy = fxMesa->height - 1 - y;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxWriteRGBSpan_ARGB8888(%d, %d, %d)\n", count, x, y);
-   }
-
-   /* Convert from RGB to BGRA with alpha = 255 */
    for (i = 0; i < count; i++)
-   {
       if (!mask || mask[i])
-      {
-         pixels[i] = (255 << 24) |       /* A */
-                     (rgb[i][0] << 16) | /* R */
-                     (rgb[i][1] << 8) |  /* G */
-                     rgb[i][2];          /* B */
-      }
-   }
+         pixels[i] = (255 << 24) | (rgb[i][0] << 16) | (rgb[i][1] << 8) | rgb[i][2];
 
    if (mask)
    {
       for (i = 0; i < count; i++)
-      {
          if (mask[i])
-         {
-            grLfbWriteRegion(fxMesa->currentFB, x + i, fxMesa->height - 1 - y,
-                             GR_LFB_SRC_FMT_8888, 1, 1, FXFALSE, 4, &pixels[i]);
-         }
-      }
+            grLfbWriteRegion(fxMesa->currentFB, x + i, fy, GR_LFB_SRC_FMT_8888, 1, 1, FXFALSE, 4, &pixels[i]);
    }
    else
-   {
-      grLfbWriteRegion(fxMesa->currentFB, x, fxMesa->height - 1 - y,
-                       GR_LFB_SRC_FMT_8888, count, 1, FXFALSE, count * 4, pixels);
-   }
+      grLfbWriteRegion(fxMesa->currentFB, x, fy, GR_LFB_SRC_FMT_8888, count, 1, FXFALSE, count * 4, pixels);
 }
 
 /**
@@ -518,28 +377,13 @@ void fxWriteMonoRGBASpan_ARGB8888(GLcontext *ctx, struct gl_renderbuffer *rb,
 {
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    const GLubyte *color = (const GLubyte *)value;
-   GLuint pixel;
+   GLuint pixel = (color[3] << 24) | (color[0] << 16) | (color[1] << 8) | color[2];
    GLuint i;
-
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxWriteMonoRGBASpan_ARGB8888(%d, %d, %d)\n", count, x, y);
-   }
-
-   /* Convert from RGBA to BGRA */
-   pixel = (color[3] << 24) | /* A */
-           (color[0] << 16) | /* R */
-           (color[1] << 8) |  /* G */
-           color[2];          /* B */
+   GLint fy = fxMesa->height - 1 - y;
 
    for (i = 0; i < count; i++)
-   {
       if (!mask || mask[i])
-      {
-         grLfbWriteRegion(fxMesa->currentFB, x + i, fxMesa->height - 1 - y,
-                          GR_LFB_SRC_FMT_8888, 1, 1, FXFALSE, 4, &pixel);
-      }
-   }
+         grLfbWriteRegion(fxMesa->currentFB, x + i, fy, GR_LFB_SRC_FMT_8888, 1, 1, FXFALSE, 4, &pixel);
 }
 
 /**
@@ -553,24 +397,12 @@ void fxWriteRGBAPixels_ARGB8888(GLcontext *ctx, struct gl_renderbuffer *rb,
    const GLubyte(*rgba)[4] = (const GLubyte(*)[4])values;
    GLuint i;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxWriteRGBAPixels_ARGB8888(%d)\n", count);
-   }
-
    for (i = 0; i < count; i++)
-   {
       if (!mask || mask[i])
       {
-         GLuint pixel = (rgba[i][3] << 24) | /* A */
-                        (rgba[i][0] << 16) | /* R */
-                        (rgba[i][1] << 8) |  /* G */
-                        rgba[i][2];          /* B */
-
-         grLfbWriteRegion(fxMesa->currentFB, x[i], fxMesa->height - 1 - y[i],
-                          GR_LFB_SRC_FMT_8888, 1, 1, FXFALSE, 4, &pixel);
+         GLuint pixel = (rgba[i][3] << 24) | (rgba[i][0] << 16) | (rgba[i][1] << 8) | rgba[i][2];
+         grLfbWriteRegion(fxMesa->currentFB, x[i], fxMesa->height - 1 - y[i], GR_LFB_SRC_FMT_8888, 1, 1, FXFALSE, 4, &pixel);
       }
-   }
 }
 
 /**
@@ -582,28 +414,172 @@ void fxWriteMonoRGBAPixels_ARGB8888(GLcontext *ctx, struct gl_renderbuffer *rb,
 {
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    const GLubyte *color = (const GLubyte *)value;
-   GLuint pixel;
+   GLuint pixel = (color[3] << 24) | (color[0] << 16) | (color[1] << 8) | color[2];
    GLuint i;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
+   for (i = 0; i < count; i++)
+      if (!mask || mask[i])
+         grLfbWriteRegion(fxMesa->currentFB, x[i], fxMesa->height - 1 - y[i], GR_LFB_SRC_FMT_8888, 1, 1, FXFALSE, 4, &pixel);
+}
+
+/**
+ * Read RGB888 span from color buffer
+ */
+void fxReadRGBASpan_RGB888(GLcontext *ctx, struct gl_renderbuffer *rb,
+                           GLuint count, GLint x, GLint y, void *values)
+{
+   fxMesaContext fxMesa = FX_CONTEXT(ctx);
+   GLubyte(*rgba)[4] = (GLubyte(*)[4])values;
+   GLuint i;
+   GLint fy = fxMesa->height - 1 - y;
+
+   grLfbReadRegion(fxMesa->currentFB, x, fy, count, 1, count * 4, rgba);
+
+   for (i = 0; i < count; i++)
    {
-      fprintf(stderr, "fxWriteMonoRGBAPixels_ARGB8888(%d)\n", count);
+      GLubyte c = rgba[i][0];
+      rgba[i][0] = rgba[i][2]; // R
+      rgba[i][2] = c;          // B
+      rgba[i][3] = 255;        // A
+   }
+}
+
+/**
+ * Read RGB888 pixels from color buffer
+ */
+void fxReadRGBAPixels_RGB888(GLcontext *ctx, struct gl_renderbuffer *rb,
+                             GLuint count, const GLint x[], const GLint y[],
+                             void *values)
+{
+   fxMesaContext fxMesa = FX_CONTEXT(ctx);
+   GLubyte(*rgba)[4] = (GLubyte(*)[4])values;
+   GLuint i;
+
+   for (i = 0; i < count; i++)
+   {
+      GLuint pixel;
+      grLfbReadRegion(fxMesa->currentFB, x[i], fxMesa->height - 1 - y[i],
+                      1, 1, 4, &pixel);
+
+      rgba[i][0] = (pixel >> 16) & 0xFF; // R
+      rgba[i][1] = (pixel >> 8) & 0xFF;  // G
+      rgba[i][2] = pixel & 0xFF;         // B
+      rgba[i][3] = 255;                  // A
+   }
+}
+
+/**
+ * Write RGBA span to RGB888 color buffer
+ */
+void fxWriteRGBASpan_RGB888(GLcontext *ctx, struct gl_renderbuffer *rb,
+                            GLuint count, GLint x, GLint y, const void *values,
+                            const GLubyte *mask)
+{
+   fxMesaContext fxMesa = FX_CONTEXT(ctx);
+   const GLubyte(*rgba)[4] = (const GLubyte(*)[4])values;
+   GLuint pixels[MAX_WIDTH];
+   GLuint i;
+   GLint fy = fxMesa->height - 1 - y;
+
+   for (i = 0; i < count; i++)
+   {
+      if (!mask || mask[i])
+         pixels[i] = (255 << 24) | (rgba[i][0] << 16) | (rgba[i][1] << 8) | rgba[i][2];
    }
 
-   /* Convert from RGBA to BGRA */
-   pixel = (color[3] << 24) | /* A */
-           (color[0] << 16) | /* R */
-           (color[1] << 8) |  /* G */
-           color[2];          /* B */
+   if (mask)
+   {
+      for (i = 0; i < count; i++)
+         if (mask[i])
+            grLfbWriteRegion(fxMesa->currentFB, x + i, fy, GR_LFB_SRC_FMT_8888, 1, 1, FXFALSE, 4, &pixels[i]);
+   }
+   else
+      grLfbWriteRegion(fxMesa->currentFB, x, fy, GR_LFB_SRC_FMT_8888, count, 1, FXFALSE, count * 4, pixels);
+}
+
+/**
+ * Write RGB span to RGB888 color buffer
+ */
+void fxWriteRGBSpan_RGB888(GLcontext *ctx, struct gl_renderbuffer *rb,
+                           GLuint count, GLint x, GLint y, const void *values,
+                           const GLubyte *mask)
+{
+   fxMesaContext fxMesa = FX_CONTEXT(ctx);
+   const GLubyte(*rgb)[3] = (const GLubyte(*)[3])values;
+   GLuint pixels[MAX_WIDTH];
+   GLuint i;
+   GLint fy = fxMesa->height - 1 - y;
+
+   for (i = 0; i < count; i++)
+   {
+      if (!mask || mask[i])
+         pixels[i] = (255 << 24) | (rgb[i][0] << 16) | (rgb[i][1] << 8) | rgb[i][2];
+   }
+
+   if (mask)
+   {
+      for (i = 0; i < count; i++)
+         if (mask[i])
+            grLfbWriteRegion(fxMesa->currentFB, x + i, fy, GR_LFB_SRC_FMT_8888, 1, 1, FXFALSE, 4, &pixels[i]);
+   }
+   else
+      grLfbWriteRegion(fxMesa->currentFB, x, fy, GR_LFB_SRC_FMT_8888, count, 1, FXFALSE, count * 4, pixels);
+}
+
+/**
+ * Write mono RGBA span to RGB888 color buffer
+ */
+void fxWriteMonoRGBASpan_RGB888(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                GLuint count, GLint x, GLint y, const void *value,
+                                const GLubyte *mask)
+{
+   fxMesaContext fxMesa = FX_CONTEXT(ctx);
+   const GLubyte *color = (const GLubyte *)value;
+   GLuint pixel = (255 << 24) | (color[0] << 16) | (color[1] << 8) | color[2];
+   GLuint i;
+   GLint fy = fxMesa->height - 1 - y;
+
+   for (i = 0; i < count; i++)
+      if (!mask || mask[i])
+         grLfbWriteRegion(fxMesa->currentFB, x + i, fy, GR_LFB_SRC_FMT_8888, 1, 1, FXFALSE, 4, &pixel);
+}
+
+/**
+ * Write RGBA pixels to RGB888 color buffer
+ */
+void fxWriteRGBAPixels_RGB888(GLcontext *ctx, struct gl_renderbuffer *rb,
+                              GLuint count, const GLint x[], const GLint y[],
+                              const void *values, const GLubyte *mask)
+{
+   fxMesaContext fxMesa = FX_CONTEXT(ctx);
+   const GLubyte(*rgba)[4] = (const GLubyte(*)[4])values;
+   GLuint i;
 
    for (i = 0; i < count; i++)
    {
       if (!mask || mask[i])
       {
-         grLfbWriteRegion(fxMesa->currentFB, x[i], fxMesa->height - 1 - y[i],
-                          GR_LFB_SRC_FMT_8888, 1, 1, FXFALSE, 4, &pixel);
+         GLuint pixel = (255 << 24) | (rgba[i][0] << 16) | (rgba[i][1] << 8) | rgba[i][2];
+         grLfbWriteRegion(fxMesa->currentFB, x[i], fxMesa->height - 1 - y[i], GR_LFB_SRC_FMT_8888, 1, 1, FXFALSE, 4, &pixel);
       }
    }
+}
+
+/**
+ * Write mono RGBA pixels to RGB888 color buffer
+ */
+void fxWriteMonoRGBAPixels_RGB888(GLcontext *ctx, struct gl_renderbuffer *rb,
+                                  GLuint count, const GLint x[], const GLint y[],
+                                  const void *value, const GLubyte *mask)
+{
+   fxMesaContext fxMesa = FX_CONTEXT(ctx);
+   const GLubyte *color = (const GLubyte *)value;
+   GLuint pixel = (255 << 24) | (color[0] << 16) | (color[1] << 8) | color[2];
+   GLuint i;
+
+   for (i = 0; i < count; i++)
+      if (!mask || mask[i])
+         grLfbWriteRegion(fxMesa->currentFB, x[i], fxMesa->height - 1 - y[i], GR_LFB_SRC_FMT_8888, 1, 1, FXFALSE, 4, &pixel);
 }
 
 /**
@@ -616,11 +592,6 @@ void fxReadRGBASpan_RGB565(GLcontext *ctx, struct gl_renderbuffer *rb,
    GLubyte(*rgba)[4] = (GLubyte(*)[4])values;
    GrLfbInfo_t info;
    GLuint i, j;
-
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxReadRGBASpan_RGB565(%d, %d, %d)\n", count, x, y);
-   }
 
    info.size = sizeof(GrLfbInfo_t);
    if (grLfbLock(GR_LFB_READ_ONLY, fxMesa->currentFB,
@@ -671,17 +642,11 @@ void fxReadRGBAPixels_RGB565(GLcontext *ctx, struct gl_renderbuffer *rb,
    GrLfbInfo_t info;
    GLuint i;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxReadRGBAPixels_RGB565(%d)\n", count);
-   }
-
    info.size = sizeof(GrLfbInfo_t);
    if (grLfbLock(GR_LFB_READ_ONLY, fxMesa->currentFB,
                  GR_LFBWRITEMODE_ANY, GR_ORIGIN_UPPER_LEFT, FXFALSE, &info))
    {
       const GLint winY = fxMesa->height - 1;
-
       for (i = 0; i < count; i++)
       {
          const GLushort *data16 = (const GLushort *)((const GLubyte *)info.lfbPtr +
@@ -708,23 +673,14 @@ void fxWriteRGBASpan_RGB565(GLcontext *ctx, struct gl_renderbuffer *rb,
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    const GLubyte(*rgba)[4] = (const GLubyte(*)[4])values;
    GLushort pixels[MAX_WIDTH];
-   GLuint i;
+   GLint positions[MAX_WIDTH];
+   GLuint i, writeCount = 0;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxWriteRGBASpan_RGB565(%d, %d, %d)\n", count, x, y);
-   }
-
-   /* Convert from RGBA to RGB565 */
+   /* RGBA → RGB565 conversion */
    for (i = 0; i < count; i++)
-   {
-      if (!mask || mask[i])
-      {
-         pixels[i] = ((rgba[i][0] & 0xf8) << 8) | /* R */
-                     ((rgba[i][1] & 0xfc) << 3) | /* G */
-                     (rgba[i][2] >> 3);           /* B */
-      }
-   }
+      pixels[i] = ((rgba[i][0] & 0xF8) << 8) |
+                  ((rgba[i][1] & 0xFC) << 3) |
+                  (rgba[i][2] >> 3);
 
    if (mask)
    {
@@ -732,10 +688,14 @@ void fxWriteRGBASpan_RGB565(GLcontext *ctx, struct gl_renderbuffer *rb,
       {
          if (mask[i])
          {
-            grLfbWriteRegion(fxMesa->currentFB, x + i, fxMesa->height - 1 - y,
-                             GR_LFB_SRC_FMT_565, 1, 1, FXFALSE, 2, &pixels[i]);
+            pixels[writeCount] = pixels[i];
+            positions[writeCount] = x + i;
+            writeCount++;
          }
       }
+      for (i = 0; i < writeCount; i++)
+         grLfbWriteRegion(fxMesa->currentFB, positions[i], fxMesa->height - 1 - y,
+                          GR_LFB_SRC_FMT_565, 1, 1, FXFALSE, 2, &pixels[i]);
    }
    else
    {
@@ -754,23 +714,13 @@ void fxWriteRGBSpan_RGB565(GLcontext *ctx, struct gl_renderbuffer *rb,
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    const GLubyte(*rgb)[3] = (const GLubyte(*)[3])values;
    GLushort pixels[MAX_WIDTH];
-   GLuint i;
+   GLint positions[MAX_WIDTH];
+   GLuint i, writeCount = 0;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxWriteRGBSpan_RGB565(%d, %d, %d)\n", count, x, y);
-   }
-
-   /* Convert from RGB to RGB565 */
    for (i = 0; i < count; i++)
-   {
-      if (!mask || mask[i])
-      {
-         pixels[i] = ((rgb[i][0] & 0xf8) << 8) | /* R */
-                     ((rgb[i][1] & 0xfc) << 3) | /* G */
-                     (rgb[i][2] >> 3);           /* B */
-      }
-   }
+      pixels[i] = ((rgb[i][0] & 0xF8) << 8) |
+                  ((rgb[i][1] & 0xFC) << 3) |
+                  (rgb[i][2] >> 3);
 
    if (mask)
    {
@@ -778,10 +728,14 @@ void fxWriteRGBSpan_RGB565(GLcontext *ctx, struct gl_renderbuffer *rb,
       {
          if (mask[i])
          {
-            grLfbWriteRegion(fxMesa->currentFB, x + i, fxMesa->height - 1 - y,
-                             GR_LFB_SRC_FMT_565, 1, 1, FXFALSE, 2, &pixels[i]);
+            pixels[writeCount] = pixels[i];
+            positions[writeCount] = x + i;
+            writeCount++;
          }
       }
+      for (i = 0; i < writeCount; i++)
+         grLfbWriteRegion(fxMesa->currentFB, positions[i], fxMesa->height - 1 - y,
+                          GR_LFB_SRC_FMT_565, 1, 1, FXFALSE, 2, &pixels[i]);
    }
    else
    {
@@ -799,26 +753,22 @@ void fxWriteMonoRGBASpan_RGB565(GLcontext *ctx, struct gl_renderbuffer *rb,
 {
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    const GLubyte *color = (const GLubyte *)value;
-   GLushort pixel;
+   GLushort pixel = ((color[0] & 0xF8) << 8) |
+                    ((color[1] & 0xFC) << 3) |
+                    (color[2] >> 3);
    GLuint i;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
+   if (mask)
    {
-      fprintf(stderr, "fxWriteMonoRGBASpan_RGB565(%d, %d, %d)\n", count, x, y);
+      for (i = 0; i < count; i++)
+         if (mask[i])
+            grLfbWriteRegion(fxMesa->currentFB, x + i, fxMesa->height - 1 - y,
+                             GR_LFB_SRC_FMT_565, 1, 1, FXFALSE, 2, &pixel);
    }
-
-   /* Convert from RGBA to RGB565 */
-   pixel = ((color[0] & 0xf8) << 8) | /* R */
-           ((color[1] & 0xfc) << 3) | /* G */
-           (color[2] >> 3);           /* B */
-
-   for (i = 0; i < count; i++)
+   else
    {
-      if (!mask || mask[i])
-      {
-         grLfbWriteRegion(fxMesa->currentFB, x + i, fxMesa->height - 1 - y,
-                          GR_LFB_SRC_FMT_565, 1, 1, FXFALSE, 2, &pixel);
-      }
+      grLfbWriteRegion(fxMesa->currentFB, x, fxMesa->height - 1 - y,
+                       GR_LFB_SRC_FMT_565, count, 1, FXFALSE, 2, &pixel);
    }
 }
 
@@ -831,24 +781,37 @@ void fxWriteRGBAPixels_RGB565(GLcontext *ctx, struct gl_renderbuffer *rb,
 {
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    const GLubyte(*rgba)[4] = (const GLubyte(*)[4])values;
-   GLuint i;
+   GLushort pixels[MAX_WIDTH];
+   GLint positions[MAX_WIDTH];
+   GLuint i, writeCount = 0;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
+   if (mask)
    {
-      fprintf(stderr, "fxWriteRGBAPixels_RGB565(%d)\n", count);
-   }
-
-   for (i = 0; i < count; i++)
-   {
-      if (!mask || mask[i])
+      for (i = 0; i < count; i++)
       {
-         GLushort pixel = ((rgba[i][0] & 0xf8) << 8) | /* R */
-                          ((rgba[i][1] & 0xfc) << 3) | /* G */
-                          (rgba[i][2] >> 3);           /* B */
-
-         grLfbWriteRegion(fxMesa->currentFB, x[i], fxMesa->height - 1 - y[i],
-                          GR_LFB_SRC_FMT_565, 1, 1, FXFALSE, 2, &pixel);
+         if (mask[i])
+         {
+            pixels[writeCount] = ((rgba[i][0] & 0xF8) << 8) |
+                                 ((rgba[i][1] & 0xFC) << 3) |
+                                 (rgba[i][2] >> 3);
+            positions[writeCount] = x[i];
+            writeCount++;
+         }
       }
+      for (i = 0; i < writeCount; i++)
+         grLfbWriteRegion(fxMesa->currentFB, positions[i], fxMesa->height - 1 - y[i],
+                          GR_LFB_SRC_FMT_565, 1, 1, FXFALSE, 2, &pixels[i]);
+   }
+   else
+   {
+      for (i = 0; i < count; i++)
+         pixels[i] = ((rgba[i][0] & 0xF8) << 8) |
+                     ((rgba[i][1] & 0xFC) << 3) |
+                     (rgba[i][2] >> 3);
+
+      for (i = 0; i < count; i++)
+         grLfbWriteRegion(fxMesa->currentFB, x[i], fxMesa->height - 1 - y[i],
+                          GR_LFB_SRC_FMT_565, 1, 1, FXFALSE, 2, &pixels[i]);
    }
 }
 
@@ -861,26 +824,23 @@ void fxWriteMonoRGBAPixels_RGB565(GLcontext *ctx, struct gl_renderbuffer *rb,
 {
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    const GLubyte *color = (const GLubyte *)value;
-   GLushort pixel;
+   GLushort pixel = ((color[0] & 0xF8) << 8) |
+                    ((color[1] & 0xFC) << 3) |
+                    (color[2] >> 3);
    GLuint i;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
+   if (mask)
    {
-      fprintf(stderr, "fxWriteMonoRGBAPixels_RGB565(%d)\n", count);
+      for (i = 0; i < count; i++)
+         if (mask[i])
+            grLfbWriteRegion(fxMesa->currentFB, x[i], fxMesa->height - 1 - y[i],
+                             GR_LFB_SRC_FMT_565, 1, 1, FXFALSE, 2, &pixel);
    }
-
-   /* Convert from RGBA to RGB565 */
-   pixel = ((color[0] & 0xf8) << 8) | /* R */
-           ((color[1] & 0xfc) << 3) | /* G */
-           (color[2] >> 3);           /* B */
-
-   for (i = 0; i < count; i++)
+   else
    {
-      if (!mask || mask[i])
-      {
+      for (i = 0; i < count; i++)
          grLfbWriteRegion(fxMesa->currentFB, x[i], fxMesa->height - 1 - y[i],
                           GR_LFB_SRC_FMT_565, 1, 1, FXFALSE, 2, &pixel);
-      }
    }
 }
 
@@ -895,11 +855,6 @@ void fxReadRGBASpan_ARGB1555(GLcontext *ctx, struct gl_renderbuffer *rb,
    GrLfbInfo_t info;
    GLuint i, j;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxReadRGBASpan_ARGB1555(%d, %d, %d)\n", count, x, y);
-   }
-
    info.size = sizeof(GrLfbInfo_t);
    if (grLfbLock(GR_LFB_READ_ONLY, fxMesa->currentFB,
                  GR_LFBWRITEMODE_ANY, GR_ORIGIN_UPPER_LEFT, FXFALSE, &info))
@@ -909,7 +864,7 @@ void fxReadRGBASpan_ARGB1555(GLcontext *ctx, struct gl_renderbuffer *rb,
                                                   (winY - y) * info.strideInBytes +
                                                   x * 2);
       const GLuint *data32 = (const GLuint *)data16;
-      GLuint extraPixel = (count & 1);
+      GLuint extraPixel = count & 1;
       GLuint n32 = count - extraPixel;
 
       for (i = j = 0; i < n32; i += 2, j++)
@@ -924,6 +879,7 @@ void fxReadRGBASpan_ARGB1555(GLcontext *ctx, struct gl_renderbuffer *rb,
          rgba[i + 1][2] = FX_rgb_scale_5[(pixel >> 16) & 0x1F];
          rgba[i + 1][3] = (pixel & 0x80000000) ? 255 : 0;
       }
+
       if (extraPixel)
       {
          GLushort pixel = data16[n32];
@@ -949,11 +905,6 @@ void fxReadRGBAPixels_ARGB1555(GLcontext *ctx, struct gl_renderbuffer *rb,
    GrLfbInfo_t info;
    GLuint i;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxReadRGBAPixels_ARGB1555(%d)\n", count);
-   }
-
    info.size = sizeof(GrLfbInfo_t);
    if (grLfbLock(GR_LFB_READ_ONLY, fxMesa->currentFB,
                  GR_LFBWRITEMODE_ANY, GR_ORIGIN_UPPER_LEFT, FXFALSE, &info))
@@ -976,6 +927,12 @@ void fxReadRGBAPixels_ARGB1555(GLcontext *ctx, struct gl_renderbuffer *rb,
    }
 }
 
+static inline GLushort rgba_to_argb1555(const GLubyte rgba[4])
+{
+   return ((rgba[3] > 127) ? 0x8000 : 0) | ((rgba[0] & 0xF8) << 7) |
+          ((rgba[1] & 0xF8) << 2) | (rgba[2] >> 3);
+}
+
 /**
  * Write RGBA span to ARGB1555 color buffer
  */
@@ -987,40 +944,20 @@ void fxWriteRGBASpan_ARGB1555(GLcontext *ctx, struct gl_renderbuffer *rb,
    const GLubyte(*rgba)[4] = (const GLubyte(*)[4])values;
    GLushort pixels[MAX_WIDTH];
    GLuint i;
+   GLint fy = fxMesa->height - 1 - y;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxWriteRGBASpan_ARGB1555(%d, %d, %d)\n", count, x, y);
-   }
-
-   /* Convert from RGBA to ARGB1555 */
    for (i = 0; i < count; i++)
-   {
       if (!mask || mask[i])
-      {
-         pixels[i] = ((rgba[i][3] > 127) ? 0x8000 : 0) | /* A */
-                     ((rgba[i][0] & 0xf8) << 7) |        /* R */
-                     ((rgba[i][1] & 0xf8) << 2) |        /* G */
-                     (rgba[i][2] >> 3);                  /* B */
-      }
-   }
+         pixels[i] = rgba_to_argb1555(rgba[i]);
 
    if (mask)
    {
       for (i = 0; i < count; i++)
-      {
          if (mask[i])
-         {
-            grLfbWriteRegion(fxMesa->currentFB, x + i, fxMesa->height - 1 - y,
-                             GR_LFB_SRC_FMT_1555, 1, 1, FXFALSE, 2, &pixels[i]);
-         }
-      }
+            grLfbWriteRegion(fxMesa->currentFB, x + i, fy, GR_LFB_SRC_FMT_1555, 1, 1, FXFALSE, 2, &pixels[i]);
    }
    else
-   {
-      grLfbWriteRegion(fxMesa->currentFB, x, fxMesa->height - 1 - y,
-                       GR_LFB_SRC_FMT_1555, count, 1, FXFALSE, count * 2, pixels);
-   }
+      grLfbWriteRegion(fxMesa->currentFB, x, fy, GR_LFB_SRC_FMT_1555, count, 1, FXFALSE, count * 2, pixels);
 }
 
 /**
@@ -1034,40 +971,20 @@ void fxWriteRGBSpan_ARGB1555(GLcontext *ctx, struct gl_renderbuffer *rb,
    const GLubyte(*rgb)[3] = (const GLubyte(*)[3])values;
    GLushort pixels[MAX_WIDTH];
    GLuint i;
+   GLint fy = fxMesa->height - 1 - y;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxWriteRGBSpan_ARGB1555(%d, %d, %d)\n", count, x, y);
-   }
-
-   /* Convert from RGB to ARGB1555 with alpha = 1 */
    for (i = 0; i < count; i++)
-   {
       if (!mask || mask[i])
-      {
-         pixels[i] = 0x8000 |                    /* A = 1 */
-                     ((rgb[i][0] & 0xf8) << 7) | /* R */
-                     ((rgb[i][1] & 0xf8) << 2) | /* G */
-                     (rgb[i][2] >> 3);           /* B */
-      }
-   }
+         pixels[i] = 0x8000 | ((rgb[i][0] & 0xF8) << 7) | ((rgb[i][1] & 0xF8) << 2) | (rgb[i][2] >> 3);
 
    if (mask)
    {
       for (i = 0; i < count; i++)
-      {
          if (mask[i])
-         {
-            grLfbWriteRegion(fxMesa->currentFB, x + i, fxMesa->height - 1 - y,
-                             GR_LFB_SRC_FMT_1555, 1, 1, FXFALSE, 2, &pixels[i]);
-         }
-      }
+            grLfbWriteRegion(fxMesa->currentFB, x + i, fy, GR_LFB_SRC_FMT_1555, 1, 1, FXFALSE, 2, &pixels[i]);
    }
    else
-   {
-      grLfbWriteRegion(fxMesa->currentFB, x, fxMesa->height - 1 - y,
-                       GR_LFB_SRC_FMT_1555, count, 1, FXFALSE, count * 2, pixels);
-   }
+      grLfbWriteRegion(fxMesa->currentFB, x, fy, GR_LFB_SRC_FMT_1555, count, 1, FXFALSE, count * 2, pixels);
 }
 
 /**
@@ -1079,28 +996,13 @@ void fxWriteMonoRGBASpan_ARGB1555(GLcontext *ctx, struct gl_renderbuffer *rb,
 {
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    const GLubyte *color = (const GLubyte *)value;
-   GLushort pixel;
+   GLushort pixel = rgba_to_argb1555(color);
    GLuint i;
-
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxWriteMonoRGBASpan_ARGB1555(%d, %d, %d)\n", count, x, y);
-   }
-
-   /* Convert from RGBA to ARGB1555 */
-   pixel = ((color[3] > 127) ? 0x8000 : 0) | /* A */
-           ((color[0] & 0xf8) << 7) |        /* R */
-           ((color[1] & 0xf8) << 2) |        /* G */
-           (color[2] >> 3);                  /* B */
+   GLint fy = fxMesa->height - 1 - y;
 
    for (i = 0; i < count; i++)
-   {
       if (!mask || mask[i])
-      {
-         grLfbWriteRegion(fxMesa->currentFB, x + i, fxMesa->height - 1 - y,
-                          GR_LFB_SRC_FMT_1555, 1, 1, FXFALSE, 2, &pixel);
-      }
-   }
+         grLfbWriteRegion(fxMesa->currentFB, x + i, fy, GR_LFB_SRC_FMT_1555, 1, 1, FXFALSE, 2, &pixel);
 }
 
 /**
@@ -1114,24 +1016,12 @@ void fxWriteRGBAPixels_ARGB1555(GLcontext *ctx, struct gl_renderbuffer *rb,
    const GLubyte(*rgba)[4] = (const GLubyte(*)[4])values;
    GLuint i;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxWriteRGBAPixels_ARGB1555(%d)\n", count);
-   }
-
    for (i = 0; i < count; i++)
-   {
       if (!mask || mask[i])
       {
-         GLushort pixel = ((rgba[i][3] > 127) ? 0x8000 : 0) | /* A */
-                          ((rgba[i][0] & 0xf8) << 7) |        /* R */
-                          ((rgba[i][1] & 0xf8) << 2) |        /* G */
-                          (rgba[i][2] >> 3);                  /* B */
-
-         grLfbWriteRegion(fxMesa->currentFB, x[i], fxMesa->height - 1 - y[i],
-                          GR_LFB_SRC_FMT_1555, 1, 1, FXFALSE, 2, &pixel);
+         GLushort pixel = rgba_to_argb1555(rgba[i]);
+         grLfbWriteRegion(fxMesa->currentFB, x[i], fxMesa->height - 1 - y[i], GR_LFB_SRC_FMT_1555, 1, 1, FXFALSE, 2, &pixel);
       }
-   }
 }
 
 /**
@@ -1143,33 +1033,17 @@ void fxWriteMonoRGBAPixels_ARGB1555(GLcontext *ctx, struct gl_renderbuffer *rb,
 {
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    const GLubyte *color = (const GLubyte *)value;
-   GLushort pixel;
+   GLushort pixel = rgba_to_argb1555(color);
    GLuint i;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxWriteMonoRGBAPixels_ARGB1555(%d)\n", count);
-   }
-
-   /* Convert from RGBA to ARGB1555 */
-   pixel = ((color[3] > 127) ? 0x8000 : 0) | /* A */
-           ((color[0] & 0xf8) << 7) |        /* R */
-           ((color[1] & 0xf8) << 2) |        /* G */
-           (color[2] >> 3);                  /* B */
-
    for (i = 0; i < count; i++)
-   {
       if (!mask || mask[i])
-      {
-         grLfbWriteRegion(fxMesa->currentFB, x[i], fxMesa->height - 1 - y[i],
-                          GR_LFB_SRC_FMT_1555, 1, 1, FXFALSE, 2, &pixel);
-      }
-   }
+         grLfbWriteRegion(fxMesa->currentFB, x[i], fxMesa->height - 1 - y[i], GR_LFB_SRC_FMT_1555, 1, 1, FXFALSE, 2, &pixel);
 }
 
-/**
- * Read 24-bit depth pixels from depth buffer
- */
+// /**
+//  * Read 24-bit depth pixels from depth buffer
+//  */
 void fxReadDepthPixels_Z24(GLcontext *ctx, struct gl_renderbuffer *rb,
                            GLuint count, const GLint x[], const GLint y[],
                            void *values)
@@ -1178,17 +1052,23 @@ void fxReadDepthPixels_Z24(GLcontext *ctx, struct gl_renderbuffer *rb,
    GLuint *depth = (GLuint *)values;
    GLint bottom = fxMesa->height - 1;
    GLuint i;
+   GLuint stencil_size;
+
+   fx_get_depth_stencil_sizes(ctx, NULL, &stencil_size);
 
    if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
       fprintf(stderr, "fxReadDepthPixels_Z24(%d)\n", count);
-   }
 
    for (i = 0; i < count; i++)
    {
-      GLuint pixel;
-      grLfbReadRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i], 1, 1, 0, &pixel);
-      depth[i] = pixel & 0xffffff;
+      GLuint pixel32 = 0;
+      /* read one 32-bit word from aux buffer, stride = 4 bytes */
+      grLfbReadRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i], 1, 1, 4, &pixel32);
+
+      if (stencil_size > 0)
+         depth[i] = pixel32 & 0x00FFFFFF;
+      else
+         depth[i] = pixel32;
    }
 }
 
@@ -1203,33 +1083,59 @@ void fxWriteDepthSpan_Z24(GLcontext *ctx, struct gl_renderbuffer *rb,
    const GLuint *depth = (const GLuint *)values;
    GLint bottom = fxMesa->height - 1;
    GLuint i;
+   GLuint stencil_size;
+   GLuint tmp;
+   GLuint writePixels[MAX_WIDTH]; /* temporary buffer for bulk writes */
+
+   fx_get_depth_stencil_sizes(ctx, NULL, &stencil_size);
 
    if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
       fprintf(stderr, "fxWriteDepthSpan_Z24(%d, %d, %d)\n", count, x, y);
-   }
 
    if (mask)
    {
-      for (i = 0; i < count; i++)
+      /* Masked per-pixel writes: read/merge/write for each pixel */
+      for (i = 0; i < count; ++i)
       {
-         if (mask[i])
+         if (!mask[i])
+            continue;
+
+         if (stencil_size > 0)
          {
-            GLuint pixel = depth[i] & 0xffffff;
+            /* Read existing 32-bit word, merge stencil */
+            GLuint old32 = 0;
+            grLfbReadRegion(GR_BUFFER_AUXBUFFER, x + i, bottom - y, 1, 1, 4, &old32);
+            tmp = (old32 & 0xFF000000) | (depth[i] & 0x00FFFFFF);
             grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x + i, bottom - y,
-                             GR_LFB_SRC_FMT_ZA16, 1, 1, FXFALSE, 4, &pixel);
+                             GR_LFB_SRC_FMT_8888, 1, 1, FXFALSE, 4, &tmp);
+         }
+         else
+         {
+            tmp = depth[i];
+            grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x + i, bottom - y,
+                             GR_LFB_SRC_FMT_8888, 1, 1, FXFALSE, 4, &tmp);
          }
       }
    }
    else
    {
-      GLuint pixels[MAX_WIDTH];
-      for (i = 0; i < count; i++)
+      /* Bulk write: merge stencil if present */
+      if (stencil_size > 0)
       {
-         pixels[i] = depth[i] & 0xffffff;
+         /* read existing dwords, merge per pixel, then write back */
+         GLuint *existing = writePixels;
+         grLfbReadRegion(GR_BUFFER_AUXBUFFER, x, bottom - y, count, 1, count * 4, existing);
+         for (i = 0; i < count; i++)
+            existing[i] = (existing[i] & 0xFF000000) | (depth[i] & 0x00FFFFFF);
+         grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x, bottom - y,
+                          GR_LFB_SRC_FMT_8888, count, 1, FXFALSE, count * 4, existing);
       }
-      grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x, bottom - y,
-                       GR_LFB_SRC_FMT_ZA16, count, 1, FXFALSE, count * 4, pixels);
+      else
+      {
+         /* no stencil: write depth[] directly */
+         grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x, bottom - y,
+                          GR_LFB_SRC_FMT_8888, count, 1, FXFALSE, count * 4, (void *)depth);
+      }
    }
 }
 
@@ -1241,21 +1147,34 @@ void fxWriteMonoDepthSpan_Z24(GLcontext *ctx, struct gl_renderbuffer *rb,
                               const GLubyte *mask)
 {
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
-   const GLuint depthVal = *((const GLuint *)value) & 0xffffff;
+   const GLuint depthVal = *((const GLuint *)value) & 0x00FFFFFF;
    GLint bottom = fxMesa->height - 1;
    GLuint i;
+   GLuint stencil_size;
+
+   fx_get_depth_stencil_sizes(ctx, NULL, &stencil_size);
 
    if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
       fprintf(stderr, "fxWriteMonoDepthSpan_Z24(%d, %d, %d)\n", count, x, y);
-   }
 
    for (i = 0; i < count; i++)
    {
       if (!mask || mask[i])
       {
-         grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x + i, bottom - y,
-                          GR_LFB_SRC_FMT_ZA16, 1, 1, FXFALSE, 4, &depthVal);
+         if (stencil_size > 0)
+         {
+            /* read existing 32-bit word, merge stencil */
+            GLuint old32 = 0;
+            grLfbReadRegion(GR_BUFFER_AUXBUFFER, x + i, bottom - y, 1, 1, 4, &old32);
+            GLuint tmp = (old32 & 0xFF000000) | depthVal;
+            grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x + i, bottom - y,
+                             GR_LFB_SRC_FMT_8888, 1, 1, FXFALSE, 4, &tmp);
+         }
+         else
+         {
+            grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x + i, bottom - y,
+                             GR_LFB_SRC_FMT_8888, 1, 1, FXFALSE, 4, &depthVal);
+         }
       }
    }
 }
@@ -1271,20 +1190,33 @@ void fxWriteDepthPixels_Z24(GLcontext *ctx, struct gl_renderbuffer *rb,
    const GLuint *depth = (const GLuint *)values;
    GLint bottom = fxMesa->height - 1;
    GLuint i;
+   GLuint stencil_size;
+   GLuint tmp;
+
+   fx_get_depth_stencil_sizes(ctx, NULL, &stencil_size);
 
    if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
       fprintf(stderr, "fxWriteDepthPixels_Z24(%d)\n", count);
-   }
 
    for (i = 0; i < count; i++)
    {
-      if (!mask || mask[i])
+      if (mask && !mask[i])
+         continue;
+
+      if (stencil_size > 0)
       {
-         GLuint pixel = depth[i] & 0xffffff;
-         grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i],
-                          GR_LFB_SRC_FMT_ZA16, 1, 1, FXFALSE, 4, &pixel);
+         /* Read existing 32-bit word, merge stencil */
+         GLuint old32 = 0;
+         grLfbReadRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i], 1, 1, 4, &old32);
+         tmp = (old32 & 0xFF000000) | (depth[i] & 0x00FFFFFF);
       }
+      else
+      {
+         tmp = depth[i];
+      }
+
+      grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i],
+                       GR_LFB_SRC_FMT_8888, 1, 1, FXFALSE, 4, &tmp);
    }
 }
 
@@ -1297,18 +1229,34 @@ void fxWriteMonoDepthPixels_Z24(GLcontext *ctx, struct gl_renderbuffer *rb,
                                 const void *value, const GLubyte *mask)
 {
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
-   const GLuint depthVal = *((const GLuint *) value) & 0xffffff;
+   const GLuint depthVal = *((const GLuint *)value) & 0x00FFFFFF;
    GLint bottom = fxMesa->height - 1;
    GLuint i;
+   GLuint stencil_size;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER) {
+   fx_get_depth_stencil_sizes(ctx, NULL, &stencil_size);
+
+   if (TDFX_DEBUG & VERBOSE_DRIVER)
       fprintf(stderr, "fxWriteMonoDepthPixels_Z24(%d)\n", count);
-   }
 
-   for (i = 0; i < count; i++) {
-      if (!mask || mask[i]) {
-         grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i],
-                          GR_LFB_SRC_FMT_ZA16, 1, 1, FXFALSE, 4, &depthVal);
+   for (i = 0; i < count; i++)
+   {
+      if (!mask || mask[i])
+      {
+         if (stencil_size > 0)
+         {
+            /* read existing 32-bit word, merge stencil */
+            GLuint old32 = 0;
+            grLfbReadRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i], 1, 1, 4, &old32);
+            GLuint tmp = (old32 & 0xFF000000) | depthVal;
+            grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i],
+                             GR_LFB_SRC_FMT_8888, 1, 1, FXFALSE, 4, &tmp);
+         }
+         else
+         {
+            grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i],
+                             GR_LFB_SRC_FMT_8888, 1, 1, FXFALSE, 4, &depthVal);
+         }
       }
    }
 }
@@ -1323,16 +1271,20 @@ void fxReadDepthSpan_Z24(GLcontext *ctx, struct gl_renderbuffer *rb,
    GLuint *depth = (GLuint *)values;
    GLint bottom = fxMesa->height - 1;
    GLuint i;
+   GLuint stencil_size;
+
+   fx_get_depth_stencil_sizes(ctx, NULL, &stencil_size);
 
    if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
       fprintf(stderr, "fxReadDepthSpan_Z24(%d, %d, %d)\n", count, x, y);
-   }
 
-   grLfbReadRegion(GR_BUFFER_AUXBUFFER, x, bottom - y, count, 1, 0, depth);
-   for (i = 0; i < count; i++)
+   /* Bulk read count 32-bit words, stride = 4*count bytes */
+   grLfbReadRegion(GR_BUFFER_AUXBUFFER, x, bottom - y, count, 1, count * 4, depth);
+
+   if (stencil_size > 0)
    {
-      depth[i] &= 0xffffff;
+      for (i = 0; i < count; i++)
+         depth[i] &= 0x00FFFFFF;
    }
 }
 
@@ -1346,14 +1298,8 @@ void fxReadDepthPixels_Z16(GLcontext *ctx, struct gl_renderbuffer *rb,
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    GLuint *depth = (GLuint *)values;
    GLint bottom = fxMesa->height - 1;
-   GLuint i;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxReadDepthPixels_Z16(%d)\n", count);
-   }
-
-   for (i = 0; i < count; i++)
+   for (GLuint i = 0; i < count; i++)
    {
       GLushort pixel;
       grLfbReadRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i], 1, 1, 0, &pixel);
@@ -1370,34 +1316,25 @@ void fxWriteDepthSpan_Z16(GLcontext *ctx, struct gl_renderbuffer *rb,
 {
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    const GLuint *depth = (const GLuint *)values;
-   GLint bottom = fxMesa->height - 1;
-   GLuint i;
-
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxWriteDepthSpan_Z16(%d, %d, %d)\n", count, x, y);
-   }
+   GLint fy = fxMesa->height - 1 - y;
 
    if (mask)
    {
-      for (i = 0; i < count; i++)
-      {
+      for (GLuint i = 0; i < count; i++)
          if (mask[i])
          {
-            GLushort pixel = (GLushort)(depth[i] & 0xffff);
-            grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x + i, bottom - y,
+            GLushort pixel = (GLushort)(depth[i] & 0xFFFF);
+            grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x + i, fy,
                              GR_LFB_SRC_FMT_ZA16, 1, 1, FXFALSE, 2, &pixel);
          }
-      }
    }
    else
    {
       GLushort pixels[MAX_WIDTH];
-      for (i = 0; i < count; i++)
-      {
-         pixels[i] = (GLushort)(depth[i] & 0xffff);
-      }
-      grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x, bottom - y,
+      for (GLuint i = 0; i < count; i++)
+         pixels[i] = (GLushort)(depth[i] & 0xFFFF);
+
+      grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x, fy,
                        GR_LFB_SRC_FMT_ZA16, count, 1, FXFALSE, count * 2, pixels);
    }
 }
@@ -1410,23 +1347,13 @@ void fxWriteMonoDepthSpan_Z16(GLcontext *ctx, struct gl_renderbuffer *rb,
                               const GLubyte *mask)
 {
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
-   const GLushort depthVal = (GLushort)(*((const GLuint *)value) & 0xffff);
-   GLint bottom = fxMesa->height - 1;
-   GLuint i;
+   const GLushort depthVal = (GLushort)(*((const GLuint *)value) & 0xFFFF);
+   GLint fy = fxMesa->height - 1 - y;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxWriteMonoDepthSpan_Z16(%d, %d, %d)\n", count, x, y);
-   }
-
-   for (i = 0; i < count; i++)
-   {
+   for (GLuint i = 0; i < count; i++)
       if (!mask || mask[i])
-      {
-         grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x + i, bottom - y,
+         grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x + i, fy,
                           GR_LFB_SRC_FMT_ZA16, 1, 1, FXFALSE, 2, &depthVal);
-      }
-   }
 }
 
 /**
@@ -1439,22 +1366,14 @@ void fxWriteDepthPixels_Z16(GLcontext *ctx, struct gl_renderbuffer *rb,
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    const GLuint *depth = (const GLuint *)values;
    GLint bottom = fxMesa->height - 1;
-   GLuint i;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxWriteDepthPixels_Z16(%d)\n", count);
-   }
-
-   for (i = 0; i < count; i++)
-   {
+   for (GLuint i = 0; i < count; i++)
       if (!mask || mask[i])
       {
-         GLushort pixel = (GLushort)(depth[i] & 0xffff);
+         GLushort pixel = (GLushort)(depth[i] & 0xFFFF);
          grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i],
                           GR_LFB_SRC_FMT_ZA16, 1, 1, FXFALSE, 2, &pixel);
       }
-   }
 }
 
 /**
@@ -1465,23 +1384,13 @@ void fxWriteMonoDepthPixels_Z16(GLcontext *ctx, struct gl_renderbuffer *rb,
                                 const void *value, const GLubyte *mask)
 {
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
-   const GLushort depthVal = (GLushort)(*((const GLuint *)value) & 0xffff);
+   const GLushort depthVal = (GLushort)(*((const GLuint *)value) & 0xFFFF);
    GLint bottom = fxMesa->height - 1;
-   GLuint i;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxWriteMonoDepthPixels_Z16(%d)\n", count);
-   }
-
-   for (i = 0; i < count; i++)
-   {
+   for (GLuint i = 0; i < count; i++)
       if (!mask || mask[i])
-      {
          grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i],
                           GR_LFB_SRC_FMT_ZA16, 1, 1, FXFALSE, 2, &depthVal);
-      }
-   }
 }
 
 /**
@@ -1492,20 +1401,13 @@ void fxReadDepthSpan_Z16(GLcontext *ctx, struct gl_renderbuffer *rb,
 {
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    GLuint *depth = (GLuint *)values;
-   GLint bottom = fxMesa->height - 1;
+   GLint fy = fxMesa->height - 1 - y;
    GLushort depth16[MAX_WIDTH];
-   GLuint i;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxReadDepthSpan_Z16(%d, %d, %d)\n", count, x, y);
-   }
+   grLfbReadRegion(GR_BUFFER_AUXBUFFER, x, fy, count, 1, 0, depth16);
 
-   grLfbReadRegion(GR_BUFFER_AUXBUFFER, x, bottom - y, count, 1, 0, depth16);
-   for (i = 0; i < count; i++)
-   {
+   for (GLuint i = 0; i < count; i++)
       depth[i] = depth16[i];
-   }
 }
 
 /**
@@ -1525,10 +1427,11 @@ void fxReadStencilPixels(GLcontext *ctx, struct gl_renderbuffer *rb,
       fprintf(stderr, "fxReadStencilPixels(%d)\n", count);
    }
 
+   /* Read each pixel individually (pixel list) */
    for (i = 0; i < count; i++)
    {
       GLuint zs32;
-      grLfbReadRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i], 1, 1, 0, &zs32);
+      grLfbReadRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i], 1, 1, 4, &zs32);
       stencil[i] = zs32 >> 24;
    }
 }
@@ -1543,6 +1446,7 @@ void fxWriteMonoStencilSpan(GLcontext *ctx, struct gl_renderbuffer *rb,
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    const GLubyte stencilVal = *((const GLubyte *)value);
    GLint bottom = fxMesa->height - 1;
+   GLuint zs32[MAX_WIDTH];
    GLuint i;
 
    if (TDFX_DEBUG & VERBOSE_DRIVER)
@@ -1550,17 +1454,25 @@ void fxWriteMonoStencilSpan(GLcontext *ctx, struct gl_renderbuffer *rb,
       fprintf(stderr, "fxWriteMonoStencilSpan(%d, %d, %d)\n", count, x, y);
    }
 
-   for (i = 0; i < count; i++)
+   if (!mask && count <= MAX_WIDTH)
    {
-      if (!mask || mask[i])
+      /* Bulk read, merge, write */
+      grLfbReadRegion(GR_BUFFER_AUXBUFFER, x, bottom - y, count, 1, 4, zs32);
+      for (i = 0; i < count; i++)
+         zs32[i] = (zs32[i] & 0x00ffffff) | (stencilVal << 24);
+      grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x, bottom - y, GR_LFB_SRC_FMT_ZA16, count, 1, FXFALSE, count * 4, zs32);
+   }
+   else
+   {
+      for (i = 0; i < count; i++)
       {
-         GLuint zs32;
-         /* Read current depth/stencil value */
-         grLfbReadRegion(GR_BUFFER_AUXBUFFER, x + i, bottom - y, 1, 1, 0, &zs32);
-         /* Update stencil bits only */
-         zs32 = (zs32 & 0x00ffffff) | (stencilVal << 24);
-         grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x + i, bottom - y,
-                          GR_LFB_SRC_FMT_ZA16, 1, 1, FXFALSE, 4, &zs32);
+         if (!mask || mask[i])
+         {
+            GLuint zs32val;
+            grLfbReadRegion(GR_BUFFER_AUXBUFFER, x + i, bottom - y, 1, 1, 4, &zs32val);
+            zs32val = (zs32val & 0x00ffffff) | (stencilVal << 24);
+            grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x + i, bottom - y, GR_LFB_SRC_FMT_ZA16, 1, 1, FXFALSE, 4, &zs32val);
+         }
       }
    }
 }
@@ -1574,23 +1486,23 @@ void fxWriteMonoStencilPixels(GLcontext *ctx, struct gl_renderbuffer *rb,
                               const void *value, const GLubyte *mask)
 {
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
-   const GLubyte stencilVal = *((const GLubyte *) value);
+   const GLubyte stencilVal = *((const GLubyte *)value);
    GLint bottom = fxMesa->height - 1;
    GLuint i;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER) {
+   if (TDFX_DEBUG & VERBOSE_DRIVER)
+   {
       fprintf(stderr, "fxWriteMonoStencilPixels(%d)\n", count);
    }
 
-   for (i = 0; i < count; i++) {
-      if (!mask || mask[i]) {
-         GLuint zs32;
-         /* Read current depth/stencil value */
-         grLfbReadRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i], 1, 1, 0, &zs32);
-         /* Update stencil bits only */
-         zs32 = (zs32 & 0x00ffffff) | (stencilVal << 24);
-         grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i],
-                          GR_LFB_SRC_FMT_ZA16, 1, 1, FXFALSE, 4, &zs32);
+   for (i = 0; i < count; i++)
+   {
+      if (!mask || mask[i])
+      {
+         GLuint zs32val;
+         grLfbReadRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i], 1, 1, 4, &zs32val);
+         zs32val = (zs32val & 0x00ffffff) | (stencilVal << 24);
+         grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i], GR_LFB_SRC_FMT_ZA16, 1, 1, FXFALSE, 4, &zs32val);
       }
    }
 }
@@ -1612,10 +1524,21 @@ void fxReadStencilSpan(GLcontext *ctx, struct gl_renderbuffer *rb,
       fprintf(stderr, "fxReadStencilSpan(%d, %d, %d)\n", count, x, y);
    }
 
-   grLfbReadRegion(GR_BUFFER_AUXBUFFER, x, bottom - y, count, 1, 0, zs32);
-   for (i = 0; i < count; i++)
+   /* Bulk read if count is reasonable */
+   if (count <= MAX_WIDTH)
    {
-      stencil[i] = zs32[i] >> 24;
+      grLfbReadRegion(GR_BUFFER_AUXBUFFER, x, bottom - y, count, 1, 4, zs32);
+      for (i = 0; i < count; i++)
+         stencil[i] = zs32[i] >> 24;
+   }
+   else
+   {
+      for (i = 0; i < count; i++)
+      {
+         GLuint zs32val;
+         grLfbReadRegion(GR_BUFFER_AUXBUFFER, x + i, bottom - y, 1, 1, 4, &zs32val);
+         stencil[i] = zs32val >> 24;
+      }
    }
 }
 
@@ -1629,6 +1552,7 @@ void fxWriteStencilSpan(GLcontext *ctx, struct gl_renderbuffer *rb,
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    const GLubyte *stencil = (const GLubyte *)values;
    GLint bottom = fxMesa->height - 1;
+   GLuint zs32[MAX_WIDTH];
    GLuint i;
 
    if (TDFX_DEBUG & VERBOSE_DRIVER)
@@ -1636,17 +1560,26 @@ void fxWriteStencilSpan(GLcontext *ctx, struct gl_renderbuffer *rb,
       fprintf(stderr, "fxWriteStencilSpan(%d, %d, %d)\n", count, x, y);
    }
 
-   for (i = 0; i < count; i++)
+   if (!mask && count <= MAX_WIDTH)
    {
-      if (!mask || mask[i])
+      /* Bulk read, merge, write */
+      grLfbReadRegion(GR_BUFFER_AUXBUFFER, x, bottom - y, count, 1, 4, zs32);
+      for (i = 0; i < count; i++)
+         zs32[i] = (zs32[i] & 0x00ffffff) | (stencil[i] << 24);
+      grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x, bottom - y, GR_LFB_SRC_FMT_ZA16, count, 1, FXFALSE, count * 4, zs32);
+   }
+   else
+   {
+      /* Masked per-pixel writes */
+      for (i = 0; i < count; i++)
       {
-         GLuint zs32;
-         /* Read current depth/stencil value */
-         grLfbReadRegion(GR_BUFFER_AUXBUFFER, x + i, bottom - y, 1, 1, 0, &zs32);
-         /* Update stencil bits only */
-         zs32 = (zs32 & 0x00ffffff) | (stencil[i] << 24);
-         grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x + i, bottom - y,
-                          GR_LFB_SRC_FMT_ZA16, 1, 1, FXFALSE, 4, &zs32);
+         if (!mask || mask[i])
+         {
+            GLuint zs32val;
+            grLfbReadRegion(GR_BUFFER_AUXBUFFER, x + i, bottom - y, 1, 1, 4, &zs32val);
+            zs32val = (zs32val & 0x00ffffff) | (stencil[i] << 24);
+            grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x + i, bottom - y, GR_LFB_SRC_FMT_ZA16, 1, 1, FXFALSE, 4, &zs32val);
+         }
       }
    }
 }
@@ -1668,17 +1601,116 @@ void fxWriteStencilPixels(GLcontext *ctx, struct gl_renderbuffer *rb,
       fprintf(stderr, "fxWriteStencilPixels(%d)\n", count);
    }
 
+   /* Always per-pixel for pixel lists; mask logic handled in loop */
    for (i = 0; i < count; i++)
    {
       if (!mask || mask[i])
       {
-         GLuint zs32;
-         /* Read current depth/stencil value */
-         grLfbReadRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i], 1, 1, 0, &zs32);
-         /* Update stencil bits only */
-         zs32 = (zs32 & 0x00ffffff) | (stencil[i] << 24);
-         grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i],
-                          GR_LFB_SRC_FMT_ZA16, 1, 1, FXFALSE, 4, &zs32);
+         GLuint zs32val;
+         grLfbReadRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i], 1, 1, 4, &zs32val);
+         zs32val = (zs32val & 0x00ffffff) | (stencil[i] << 24);
+         grLfbWriteRegion(GR_BUFFER_AUXBUFFER, x[i], bottom - y[i], GR_LFB_SRC_FMT_ZA16, 1, 1, FXFALSE, 4, &zs32val);
       }
+   }
+}
+
+/**
+ * Set up span functions for a renderbuffer based on its format
+ * Following the tdfx DRI driver pattern - no context needed during setup
+ */
+void fxSetSpanFunctions(struct gl_renderbuffer *rb, const GLvisual *vis)
+{
+   if (TDFX_DEBUG & VERBOSE_DRIVER)
+   {
+      fprintf(stderr, "fxSetSpanFunctions(%p, format=%s)\n",
+              (void *)rb, _mesa_lookup_enum_by_nr(rb->InternalFormat));
+   }
+
+   if (rb->InternalFormat == GL_RGBA)
+   {
+      if (vis->redBits == 5 && vis->greenBits == 6 && vis->blueBits == 5)
+      {
+         /* 16-bit RGB565 */
+         rb->GetRow = fxReadRGBASpan_RGB565;
+         rb->GetValues = fxReadRGBAPixels_RGB565;
+         rb->PutRow = fxWriteRGBASpan_RGB565;
+         rb->PutRowRGB = fxWriteRGBSpan_RGB565;
+         rb->PutMonoRow = fxWriteMonoRGBASpan_RGB565;
+         rb->PutValues = fxWriteRGBAPixels_RGB565;
+         rb->PutMonoValues = fxWriteMonoRGBAPixels_RGB565;
+      }
+      else if (vis->redBits == 8 && vis->greenBits == 8 &&
+               vis->blueBits == 8 && vis->alphaBits == 0)
+      {
+         /* 24-bit RGB888 */
+         rb->GetRow = fxReadRGBASpan_RGB888;
+         rb->GetValues = fxReadRGBAPixels_RGB888;
+         rb->PutRow = fxWriteRGBASpan_RGB888;
+         rb->PutRowRGB = fxWriteRGBSpan_RGB888;
+         rb->PutMonoRow = fxWriteMonoRGBASpan_RGB888;
+         rb->PutValues = fxWriteRGBAPixels_RGB888;
+         rb->PutMonoValues = fxWriteMonoRGBAPixels_RGB888;
+      }
+      else if (vis->redBits == 8 && vis->greenBits == 8 &&
+               vis->blueBits == 8 && vis->alphaBits == 8)
+      {
+         /* 32-bit ARGB8888 */
+         rb->GetRow = fxReadRGBASpan_ARGB8888;
+         rb->GetValues = fxReadRGBAPixels_ARGB8888;
+         rb->PutRow = fxWriteRGBASpan_ARGB8888;
+         rb->PutRowRGB = fxWriteRGBSpan_ARGB8888;
+         rb->PutMonoRow = fxWriteMonoRGBASpan_ARGB8888;
+         rb->PutValues = fxWriteRGBAPixels_ARGB8888;
+         rb->PutMonoValues = fxWriteMonoRGBAPixels_ARGB8888;
+      }
+      else if (vis->redBits == 5 && vis->greenBits == 5 && vis->blueBits == 5)
+      {
+         /* 15-bit ARGB1555 */
+         rb->GetRow = fxReadRGBASpan_ARGB1555;
+         rb->GetValues = fxReadRGBAPixels_ARGB1555;
+         rb->PutRow = fxWriteRGBASpan_ARGB1555;
+         rb->PutRowRGB = fxWriteRGBSpan_ARGB1555;
+         rb->PutMonoRow = fxWriteMonoRGBASpan_ARGB1555;
+         rb->PutValues = fxWriteRGBAPixels_ARGB1555;
+         rb->PutMonoValues = fxWriteMonoRGBAPixels_ARGB1555;
+      }
+      else
+      {
+         _mesa_problem(NULL, "fxSetSpanFunctions: unsupported RGB format");
+      }
+   }
+   else if (rb->InternalFormat == GL_DEPTH_COMPONENT16 ||
+            rb->InternalFormat == GL_DEPTH_COMPONENT24)
+   {
+      /* Depth buffer - select functions based on actual format */
+      if (rb->InternalFormat == GL_DEPTH_COMPONENT24)
+      {
+         /* 24-bit depth functions */
+         rb->GetRow = fxReadDepthSpan_Z24;
+         rb->GetValues = fxReadDepthPixels_Z24;
+         rb->PutRow = fxWriteDepthSpan_Z24;
+         rb->PutMonoRow = fxWriteMonoDepthSpan_Z24;
+         rb->PutValues = fxWriteDepthPixels_Z24;
+         rb->PutMonoValues = fxWriteMonoDepthPixels_Z24;
+      }
+      else
+      {
+         /* 16-bit depth functions THIS */
+         rb->GetRow = fxReadDepthSpan_Z16;
+         rb->GetValues = fxReadDepthPixels_Z16;
+         rb->PutRow = fxWriteDepthSpan_Z16;
+         rb->PutMonoRow = fxWriteMonoDepthSpan_Z16;
+         rb->PutValues = fxWriteDepthPixels_Z16;
+         rb->PutMonoValues = fxWriteMonoDepthPixels_Z16;
+      }
+   }
+   else if (rb->InternalFormat == GL_STENCIL_INDEX8_EXT)
+   {
+      rb->GetRow = fxReadStencilSpan;
+      rb->GetValues = fxReadStencilPixels;
+      rb->PutRow = fxWriteStencilSpan;
+      rb->PutMonoRow = fxWriteMonoStencilSpan;
+      rb->PutValues = fxWriteStencilPixels;
+      rb->PutMonoValues = fxWriteMonoStencilPixels;
    }
 }
