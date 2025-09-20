@@ -1820,6 +1820,9 @@ int fxDDInitFxMesaContext(fxMesaContext fxMesa)
    fxMesa->lastUnitsMode = FX_UM_NONE;
    fxTMInit(fxMesa);
 
+   /* NEJC SOF TMU: Initialize deferred texture update queue */
+   fxInitDeferredTexQueue(fxMesa);
+
    /* FX units setup */
 
    fxMesa->unitsState.alphaTestEnabled = GL_FALSE;
@@ -1965,6 +1968,9 @@ void fxDDDestroyFxMesaContext(fxMesaContext fxMesa)
    _tnl_DestroyContext(fxMesa->glCtx);
    _ac_DestroyContext(fxMesa->glCtx);
    _swrast_DestroyContext(fxMesa->glCtx);
+
+   /* NEJC SOF TMU: Cleanup deferred texture update queue */
+   fxCleanupDeferredTexQueue(fxMesa);
 
    if (fxMesa->state)
       FREE(fxMesa->state);

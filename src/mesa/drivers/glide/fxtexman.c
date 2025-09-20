@@ -397,6 +397,16 @@ fxTMFindOldestObject(fxMesaContext fxMesa, int tmu)
            (info->whichTMU == FX_TMU_SPLIT) ||
            fxMesa->HaveTexUma))
       {
+         /* NEJC SOF TMU: Protect small textures that might be dynamic effects */
+         GLint texSize = grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &(info->info));
+         GLboolean isSmallTexture = (texSize <= 32*32*2); /* 32x32 16-bit or smaller */
+         GLboolean isRecentlyUsed = (bindnumber - info->lastTimeUsed) <= 5; /* Used in last 5 binds */
+         
+         if (isSmallTexture && isRecentlyUsed) {
+            /* Skip small, recently used textures - likely dynamic effects */
+            continue;
+         }
+
          lasttime = info->lastTimeUsed;
 
          if (lasttime > bindnumber)
@@ -795,6 +805,9 @@ void fxTMMoveOutTM(fxMesaContext fxMesa, struct gl_texture_object *tObj)
    if (!ti->isInTM)
       return;
 
+   /* Step 9: Flush any deferred updates for this texture before moving out of TMU */
+   fxFlushDeferredUpdatesForTexObj(fxMesa, tObj);
+
    switch (ti->whichTMU)
    {
    case FX_TMU0:
@@ -892,10 +905,172 @@ void fxTMClose(fxMesaContext fxMesa)
    }
 }
 
+void fxTMUploadSubRect(fxMesaContext fxMesa, struct gl_texture_object *texObj, 
+                       GLint level, GLint x, GLint y, GLint w, GLint h)
+{
+   tfxTexInfo *ti = fxTMGetTexInfo(texObj);
+   struct gl_texture_image *texImage = texObj->Image[0][level];
+   tfxMipMapLevel *mml;
+   GrLOD_t lodlevel;
+   GLint tmu;
+   GLubyte *data;
+   GLint texelBytes, srcRowStride, dstRowStride;
+   GLint row, srcOffset, dstOffset;
+   GLubyte *tempData = NULL;
+
+   if (TDFX_DEBUG & VERBOSE_TEXTURE) {
+      fprintf(stderr, "fxTMUploadSubRect(%p (%d), level=%d, %d,%d %dx%d)\n", 
+              (void *)texObj, texObj->Name, level, x, y, w, h);
+   }
+
+   if (!ti || !ti->isInTM || !texImage || !texImage->Data) {
+      /* Fallback to full reload if texture not resident or no data */
+      fxTMReloadMipMapLevel(fxMesa, texObj, level);
+      return;
+   }
+
+   mml = FX_MIPMAP_DATA(texImage);
+   if (!mml) {
+      fxTMReloadMipMapLevel(fxMesa, texObj, level);
+      return;
+   }
+
+   /* Check if Glide supports partial downloads for this format */
+   if (ti->info.format == GR_TEXFMT_ARGB_CMP_FXT1 ||
+       ti->info.format == GR_TEXFMT_ARGB_CMP_DXT1 ||
+       ti->info.format == GR_TEXFMT_ARGB_CMP_DXT3 ||
+       ti->info.format == GR_TEXFMT_ARGB_CMP_DXT5) {
+      /* Compressed formats - fallback to full reload */
+      fxTMReloadMipMapLevel(fxMesa, texObj, level);
+      return;
+   }
+
+   /* Calculate texture parameters */
+   texelBytes = texImage->TexFormat->TexelBytes;
+   srcRowStride = mml->width * texelBytes;
+   
+   /* For sub-rectangle updates, we need to extract the sub-region */
+   if (w == mml->width && x == 0) {
+      /* Full width update - can use direct pointer */
+      data = (GLubyte *)texImage->Data + (y * srcRowStride);
+   } else {
+      /* Partial width update - need to copy to temporary buffer */
+      dstRowStride = w * texelBytes;
+      tempData = (GLubyte *)MALLOC(h * dstRowStride);
+      if (!tempData) {
+         /* Out of memory - fallback to full reload */
+         fxTMReloadMipMapLevel(fxMesa, texObj, level);
+         return;
+      }
+      
+      /* Copy sub-rectangle to temporary buffer */
+      for (row = 0; row < h; row++) {
+         srcOffset = ((y + row) * srcRowStride) + (x * texelBytes);
+         dstOffset = row * dstRowStride;
+         MEMCPY(tempData + dstOffset, (GLubyte *)texImage->Data + srcOffset, dstRowStride);
+      }
+      data = tempData;
+   }
+
+   tmu = (int)ti->whichTMU;
+   lodlevel = ti->info.largeLodLog2 - (level - ti->minLevel);
+
+   /* Upload the sub-rectangle to TMU */
+   switch (tmu) {
+   case FX_TMU0:
+   case FX_TMU1:
+      if (w == mml->width && x == 0) {
+         /* Use partial download for full-width updates */
+         grTexDownloadMipMapLevelPartial(tmu,
+                                       ti->tm[tmu]->startAddr,
+                                       lodlevel,
+                                       FX_largeLodLog2(ti->info),
+                                       FX_aspectRatioLog2(ti->info),
+                                       ti->info.format,
+                                       GR_MIPMAPLEVELMASK_BOTH, data,
+                                       y, y + h - 1);
+      } else {
+         /* For partial width updates, fallback to full reload */
+         /* Glide doesn't support arbitrary sub-rectangle uploads */
+         if (tempData) FREE(tempData);
+         fxTMReloadMipMapLevel(fxMesa, texObj, level);
+         return;
+      }
+      break;
+      
+   case FX_TMU_SPLIT:
+      if (w == mml->width && x == 0) {
+         grTexDownloadMipMapLevelPartial(GR_TMU0,
+                                       ti->tm[FX_TMU0]->startAddr,
+                                       lodlevel,
+                                       FX_largeLodLog2(ti->info),
+                                       FX_aspectRatioLog2(ti->info),
+                                       ti->info.format,
+                                       GR_MIPMAPLEVELMASK_ODD, data,
+                                       y, y + h - 1);
+         grTexDownloadMipMapLevelPartial(GR_TMU1,
+                                       ti->tm[FX_TMU1]->startAddr,
+                                       lodlevel,
+                                       FX_largeLodLog2(ti->info),
+                                       FX_aspectRatioLog2(ti->info),
+                                       ti->info.format,
+                                       GR_MIPMAPLEVELMASK_EVEN, data,
+                                       y, y + h - 1);
+      } else {
+         if (tempData) FREE(tempData);
+         fxTMReloadMipMapLevel(fxMesa, texObj, level);
+         return;
+      }
+      break;
+      
+   case FX_TMU_BOTH:
+      if (w == mml->width && x == 0) {
+         grTexDownloadMipMapLevelPartial(GR_TMU0,
+                                       ti->tm[FX_TMU0]->startAddr,
+                                       lodlevel,
+                                       FX_largeLodLog2(ti->info),
+                                       FX_aspectRatioLog2(ti->info),
+                                       ti->info.format,
+                                       GR_MIPMAPLEVELMASK_BOTH, data,
+                                       y, y + h - 1);
+         grTexDownloadMipMapLevelPartial(GR_TMU1,
+                                       ti->tm[FX_TMU1]->startAddr,
+                                       lodlevel,
+                                       FX_largeLodLog2(ti->info),
+                                       FX_aspectRatioLog2(ti->info),
+                                       ti->info.format,
+                                       GR_MIPMAPLEVELMASK_BOTH, data,
+                                       y, y + h - 1);
+      } else {
+         if (tempData) FREE(tempData);
+         fxTMReloadMipMapLevel(fxMesa, texObj, level);
+         return;
+      }
+      break;
+      
+   default:
+      if (tempData) FREE(tempData);
+      fprintf(stderr, "fxTMUploadSubRect: INTERNAL ERROR: wrong tmu (%d)\n", tmu);
+      fxTMReloadMipMapLevel(fxMesa, texObj, level);
+      return;
+   }
+
+   if (tempData) {
+      FREE(tempData);
+   }
+
+   if (TDFX_DEBUG & VERBOSE_TEXTURE) {
+      fprintf(stderr, "fxTMUploadSubRect: Successfully uploaded sub-rectangle\n");
+   }
+}
+
 void fxTMRestoreTextures_NoLock(fxMesaContext ctx)
 {
    struct _mesa_HashTable *textures = ctx->glCtx->Shared->TexObjects;
    GLuint id;
+
+   /* Step 9: Flush all deferred texture updates before major VRAM operations */
+   fxFlushDeferredTexUpdates(ctx);
 
    for (id = _mesa_HashFirstEntry(textures);
         id;
