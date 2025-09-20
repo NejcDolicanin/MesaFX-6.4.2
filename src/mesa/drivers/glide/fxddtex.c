@@ -248,6 +248,20 @@ fxAllocTexObjData(fxMesaContext fxMesa)
    ti->mmMode = GR_MIPMAP_NEAREST;
    ti->LODblend = FXFALSE;
 
+   /* NEJC SOF Fix, Initialie scale factors to safe defaults for bind-before-gen case*/
+   /* 256.0F is a safe identity default, It maps a 1.0 OpenGL coordinate to a full Glide texture span, prevents division with 0 */
+   ti->tScale = 256.0F;
+   ti->sScale = 256.0F;
+
+   /* Additional for complete safety */
+   ti->lastTimeUsed = 0;
+   ti->minLevel = 0;
+   ti->maxLevel = 0;
+   ti->baseLevelInternalFormat = 0;
+   ti->fixedPalette = GL_FALSE;
+   ti->padded = GL_FALSE;
+   ti->tObj = NULL;
+
    return ti;
 }
 
@@ -256,22 +270,37 @@ void fxDDTexBind(GLcontext *ctx, GLenum target, struct gl_texture_object *tObj)
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    tfxTexInfo *ti;
 
-   if (TDFX_DEBUG & VERBOSE_DRIVER)
-   {
-      fprintf(stderr, "fxDDTexBind(%d, %x)\n", tObj->Name, (GLuint)tObj->DriverData);
-   }
-
    if ((target != GL_TEXTURE_1D) && (target != GL_TEXTURE_2D))
       return;
 
    if (!tObj->DriverData)
    {
       tObj->DriverData = fxAllocTexObjData(fxMesa);
+      fprintf(stderr, "NEJC DEBUG: Allocated new DriverData %p for texture %d\n", tObj->DriverData, tObj->Name);
    }
+
    ti = fxTMGetTexInfo(tObj);
+
+   /* NEJC SOF FIX... Validate driver data consistency */
+   if (ti->tObj && ti->tObj != tObj)
+   {
+      /* Corruption detected - reinitialize */
+      FREE(ti);
+      tObj->DriverData = fxAllocTexObjData(fxMesa);
+      ti = fxTMGetTexInfo(tObj);
+   }
+
+   /* Ensure back-reference is correct */
+   ti->tObj = tObj;
 
    fxMesa->texBindNumber++;
    ti->lastTimeUsed = fxMesa->texBindNumber;
+
+   /* NEJC SOF FIX: Force texture invalidation on bind to handle rare edge cases
+    * This ensures texture validation is refreshed, fixing the rare corruption
+    * that gets resolved by "shooting it" (which triggers texture revalidation)
+    */
+   ti->validated = GL_FALSE;
 
    fxMesa->new_state |= FX_NEW_TEXTURING;
 }
@@ -494,13 +523,34 @@ void fxDDTexDel(GLcontext *ctx, struct gl_texture_object *tObj)
    if (!ti)
       return;
 
+   /* NEJC SOF FIX Ensure texture is completely removed from TMU
+      Its fine this way, even though we call fxTMFreeTexture() later
+      if (ti->isInTM) guard ensures it only runs if the texture is currently resident
+   */
+   if (ti->isInTM)
+   {
+      fxTMMoveOutTM(fxMesa, tObj);
+   }
+
+   /* Clear all TMU memory references */
+   ti->tm[FX_TMU0] = NULL;
+   ti->tm[FX_TMU1] = NULL;
+   ti->whichTMU = FX_TMU_NONE;
+   ti->isInTM = GL_FALSE;
+   ti->validated = GL_FALSE;
+
+   /* Clear texture object back-reference */
+   ti->tObj = NULL;
+
+   /* Free texture memory */
    fxTMFreeTexture(fxMesa, tObj);
 
+   /* Free the driver data structure */
    FREE(ti);
    tObj->DriverData = NULL;
 
-   /* Free mipmap images and the texture object itself */
-   _mesa_delete_texture_object(ctx, tObj);
+   /* REMOVED: Don't call _mesa_delete_texture_object here -
+    * Mesa core handles this */
 }
 
 /**

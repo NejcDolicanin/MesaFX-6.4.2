@@ -799,8 +799,10 @@ void fxTMFreeTexture(fxMesaContext fxMesa, struct gl_texture_object *tObj)
       fprintf(stderr, "fxTMFreeTexture(%p (%d))\n", (void *)tObj, tObj->Name);
    }
 
+   /* Move out of TMU first - this handles range cleanup for all TMUs */
    fxTMMoveOutTM(fxMesa, tObj);
 
+   /* Clean up texture image driver data */
    for (i = 0; i < MAX_TEXTURE_LEVELS; i++)
    {
       struct gl_texture_image *texImage = tObj->Image[0][i];
@@ -812,18 +814,6 @@ void fxTMFreeTexture(fxMesaContext fxMesa, struct gl_texture_object *tObj)
             texImage->DriverData = NULL;
          }
       }
-   }
-   switch (ti->whichTMU)
-   {
-   case FX_TMU0:
-   case FX_TMU1:
-      fxTMDeleteRangeNode(fxMesa, ti->tm[ti->whichTMU]);
-      break;
-   case FX_TMU_SPLIT:
-   case FX_TMU_BOTH:
-      fxTMDeleteRangeNode(fxMesa, ti->tm[FX_TMU0]);
-      fxTMDeleteRangeNode(fxMesa, ti->tm[FX_TMU1]);
-      break;
    }
 }
 

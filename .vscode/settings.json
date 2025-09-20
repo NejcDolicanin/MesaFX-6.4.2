@@ -17,6 +17,7 @@
         "m_translate.h": "c",
         "swrast_setup.h": "c",
         "stdlib.h": "c",
-        "windows.h": "c"
+        "windows.h": "c",
+        "type_traits": "c"
     }
 }
