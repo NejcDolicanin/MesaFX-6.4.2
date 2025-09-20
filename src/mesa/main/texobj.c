@@ -615,7 +615,7 @@ _mesa_GenTextures(GLsizei n, GLuint *textures)
 
       /* NEJC SOF FIX: delay reuse by bumping IDs into a higher range */
       if (name > 0) {
-         name += 64;  /* safe margin before reuse */
+         name += 128;  /* safe margin before reuse ... 64*/
       }
 
       texObj = (*ctx->Driver.NewTextureObject)(ctx, name, target);

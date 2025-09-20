@@ -1856,13 +1856,15 @@ void fxDDTexSubImage2D(GLcontext *ctx, GLenum target, GLint level,
    if (ti->validated && ti->isInTM)
    {
       GLint updateSize = width * height;
-      GLboolean isRecentlyUsed = (fxMesa->texBindNumber - ti->lastTimeUsed) <= 4; /* Very recent */
+      GLboolean isRecentlyUsed = (fxMesa->texBindNumber - ti->lastTimeUsed) <= 8; /* More lenient */
       GLboolean isPartialUpdate = (width < texImage->Width || height < texImage->Height);
       GLboolean isBaseLevel = (level == texObj->BaseLevel);
       GLboolean hasMipmaps = (texObj->MinFilter != GL_NEAREST && texObj->MinFilter != GL_LINEAR);
       
-      /* Ultra-conservative thresholds */
-      GLboolean isVeryTiny = (updateSize <= 8*8);
+      /* Three-tier graduated thresholds for maximum performance */
+      GLboolean isVeryTiny = (updateSize <= 24*24);  /* 576 pixels */
+      GLboolean isSmall = (updateSize <= 32*32);     /* 1024 pixels */
+      GLboolean isMedium = (updateSize <= 48*32);    /* 1536 pixels - new third category */
       GLboolean isTiny = (updateSize <= 16*8);
       
       /* Step 6: NEVER defer base-level updates for mipmapped textures */
@@ -1914,7 +1916,19 @@ void fxDDTexSubImage2D(GLcontext *ctx, GLenum target, GLint level,
          }
       }
       else if (isVeryTiny && !isBaseLevel) {
-         /* Only defer extremely tiny updates on non-base levels - likely particles/sparks */
+         /* Defer very small updates on non-base levels - particles/sparks */
+         fxAddDeferredTexUpdate(fxMesa, texObj, level, xoffset, yoffset, width, height,
+                               format, type, pixels, packing, texImage);
+      }
+      else if (isSmall && !isBaseLevel && isPartialUpdate) {
+         /* Defer small updates on non-base levels - bullet holes, small decals */
+         fxAddDeferredTexUpdate(fxMesa, texObj, level, xoffset, yoffset, width, height,
+                               format, type, pixels, packing, texImage);
+      }
+      else if (isMedium && !isBaseLevel && isPartialUpdate && 
+               (fxMesa->texBindNumber - ti->lastTimeUsed) <= 4) {
+         /* Defer medium updates with stricter requirements - larger decals, streaks */
+         /* More restrictive: must be very recently used (4 binds vs 8) */
          fxAddDeferredTexUpdate(fxMesa, texObj, level, xoffset, yoffset, width, height,
                                format, type, pixels, packing, texImage);
       }
@@ -2183,7 +2197,7 @@ void fxInitDeferredTexQueue(fxMesaContext fxMesa)
 {
    fxMesa->deferredTexUpdates = NULL;
    fxMesa->currentFrameNumber = 0;
-   fxMesa->maxDeferredUpdates = 8; /* Reduced limit due to pixel data storage */
+   fxMesa->maxDeferredUpdates = 12; /* Increased from 8 - allow more queuing */
 }
 
 void fxCleanupDeferredTexQueue(fxMesaContext fxMesa)
@@ -2395,7 +2409,7 @@ void fxFlushDeferredTexUpdates(fxMesaContext fxMesa)
    tfxDeferredTexUpdate *next;
    GLuint processedCount = 0;
    GLuint droppedCount = 0;
-   const GLuint maxProcessPerFrame = 3; /* Conservative limit due to pixel processing */
+   const GLuint maxProcessPerFrame = 7; /* Final optimization - handle larger queue and updates */
    const GLuint maxFrameAge = 3; /* Step 8: Drop updates older than 3 frames */
    GLcontext *ctx = fxMesa->glCtx;
    
