@@ -45,6 +45,12 @@
 int texSwaps = 0;
 static FxU32 texBoundMask;
 
+/* NEJC SOF TMU Performance optimization: Track texture swapping to prevent thrashing */
+static int consecutiveSwaps = 0;
+static GLuint lastSwapFrame = 0;
+#define MAX_CONSECUTIVE_SWAPS 3
+#define SWAP_RESET_THRESHOLD 10
+
 #define FX_2MB_SPLIT 0x200000
 
 static struct gl_texture_object *fxTMFindOldestObject(fxMesaContext fxMesa,
@@ -202,10 +208,19 @@ fxTMFindStartAddr(fxMesaContext fxMesa, GLint tmu, int size)
    MemRange *prev, *tmp;
    int result;
    struct gl_texture_object *obj;
+   GLuint currentFrame = fxMesa->stats.swapBuffer;
 
    if (fxMesa->HaveTexUma)
    {
       tmu = FX_TMU0;
+   }
+
+   /* NEJC SOF TMU: Reset consecutive swaps counter if enough time has passed */
+   if (currentFrame != lastSwapFrame) {
+      if (currentFrame - lastSwapFrame > SWAP_RESET_THRESHOLD) {
+         consecutiveSwaps = 0;
+      }
+      lastSwapFrame = currentFrame;
    }
 
    while (1)
@@ -231,11 +246,22 @@ fxTMFindStartAddr(fxMesaContext fxMesa, GLint tmu, int size)
                fxTMDeleteRangeNode(fxMesa, tmp);
             }
             fxMesa->freeTexMem[tmu] -= size;
+            /* NEJC SOF TMU: Reset swap counter on successful allocation */
+            consecutiveSwaps = 0;
             return result;
          }
          prev = tmp;
          tmp = tmp->next;
       }
+      
+      /* NEJC SOF TMU: Check for texture thrashing before evicting */
+      if (consecutiveSwaps >= MAX_CONSECUTIVE_SWAPS) {
+         if (TDFX_DEBUG & VERBOSE_TEXTURE) {
+            fprintf(stderr, "fxTMFindStartAddr: Texture thrashing detected, failing allocation\n");
+         }
+         return -1; /* Force fallback to prevent thrashing */
+      }
+      
       /* No free space. Discard oldest */
       if (TDFX_DEBUG & VERBOSE_TEXTURE)
       {
@@ -249,6 +275,7 @@ fxTMFindStartAddr(fxMesaContext fxMesa, GLint tmu, int size)
       }
       fxTMMoveOutTM(fxMesa, obj);
       texSwaps++;
+      consecutiveSwaps++; /* NEJC SOF TMU: Track consecutive swaps */
    }
 }
 
