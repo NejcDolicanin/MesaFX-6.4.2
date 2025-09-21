@@ -82,7 +82,6 @@ static int glbTotNumCtx = 0;
 static GrHwConfiguration glbHWConfig;
 static int glbCurrentBoard = 0;
 
-
 static int
 cleangraphics(void)
 {
@@ -1104,10 +1103,6 @@ fxMesaSwapBuffers(void)
 
    if (fxMesaCurrentCtx)
    {
-      /* NEJC SOF TMU: Flush deferred texture updates at frame end to batch lightmap updates */
-      fxFlushDeferredTexUpdates(fxMesaCurrentCtx);
-      fxMesaCurrentCtx->currentFrameNumber++;
-
       _mesa_notifySwapBuffers(fxMesaCurrentCtx->glCtx);
 
       if (fxMesaCurrentCtx->haveDoubleBuffer)
