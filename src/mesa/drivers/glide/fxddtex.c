@@ -523,7 +523,7 @@ void fxDDTexDel(GLcontext *ctx, struct gl_texture_object *tObj)
    if (!ti)
       return;
 
-   /* NEJC SOF FIX Ensure texture is completely removed from TMU
+   /* Ensure texture is completely removed from TMU
       Its fine this way, even though we call fxTMFreeTexture() later
       if (ti->isInTM) guard ensures it only runs if the texture is currently resident
    */
