@@ -45,14 +45,6 @@
 #include "drivers/common/driverfuncs.h"
 #include "framebuffer.h"
 
-/* NEJC SOF TMU: Include headers for sleep functions */
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <unistd.h>
-#include <sched.h>
-#endif
-
 #ifndef TDFX_DEBUG
 int TDFX_DEBUG = (0
                   /*		  | VERBOSE_VARRAY      */  /* fxtris.c */
@@ -1105,40 +1097,24 @@ fxMesaSwapBuffers(void)
    {
       _mesa_notifySwapBuffers(fxMesaCurrentCtx->glCtx);
 
+       /* If we have two TMUs, we can get into a situation where
+          * swap buffer commands build up.  This happens because
+          * the driver queues up the commands and returns immediately.
+          * The hardware then processes the commands in turn.
+          * If we queue up too many, we can get a lockup.
+          */
       if (fxMesaCurrentCtx->haveDoubleBuffer)
       {
          grBufferSwap(fxMesaCurrentCtx->swapInterval);
-
-         /* NEJC SOF TMU: Enable buffer swap synchronization to prevent stuttering
-          * This is especially important with multi-TMU operations that can cause
-          * buffer swaps to build up and create timing issues */
+        
          if (fxMesaCurrentCtx->haveTwoTMUs)
          {
-            /* More aggressive synchronization for multi-TMU to prevent stutter */
-            while (FX_grGetInteger(GR_PENDING_BUFFERSWAPS) > 1)
+            /* Nejc: Enabled this - Don't allow swap buffer commands to build up! */
+            while (FX_grGetInteger(GR_PENDING_BUFFERSWAPS) > fxMesaCurrentCtx->maxPendingSwapBuffers)
             {
-               /* Brief yield to prevent CPU spinning while waiting */
-#ifdef _WIN32
-               Sleep(0); /* Yield timeslice */
-#else
-               sched_yield(); /* Yield to other threads */
-#endif
+               usleep(10000);
             }
          }
-         else
-         {
-            /* Standard synchronization for single TMU */
-            while (FX_grGetInteger(GR_PENDING_BUFFERSWAPS) >
-                   fxMesaCurrentCtx->maxPendingSwapBuffers)
-            {
-#ifdef _WIN32
-               Sleep(0); /* Yield timeslice */
-#else
-               sched_yield(); /* Yield to other threads */
-#endif
-            }
-         }
-
          fxMesaCurrentCtx->stats.swapBuffer++;
       }
    }
