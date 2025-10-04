@@ -323,6 +323,14 @@ typedef struct tfxTexInfo_t
    /* TMU Optimizations - track dirty mip levels range for coalesced partial uploads */
    GLint dirty_level_min, dirty_level_max; /* -1 if no dirty */
    GLboolean has_dirty_subimage;           /* true if there are pending subimage updates */
+
+    /* Streaming texture detection to avoid CPU S3TC/FXT1 overhead */
+   GLboolean streaming;           /* set true if updated almost every frame */
+   GLuint    stream_updates;      /* number of consecutive frame updates */
+   GLuint    last_update_frame;   /* last frame index this texture got TexImage */
+
+   /* Per-frame duplicate-upload suppression */
+   GLint     last_uploaded_level[2]; /* last full/partial level uploaded on TMU n in current frame */
 } tfxTexInfo;
 
 typedef struct
@@ -536,6 +544,7 @@ struct tfxMesaContext
    GLboolean haveZBuffer;
    GLboolean haveDoubleBuffer;
    GLboolean haveGlobalPaletteTexture;
+   GLboolean keepResidentOnInvalidate;  /* Keep textures resident on fxTexInvalidate (avoid evict+reupload on param changes) */
    GLint swapInterval;
    GLint maxPendingSwapBuffers;
 

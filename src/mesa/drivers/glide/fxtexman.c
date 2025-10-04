@@ -499,8 +499,11 @@ void fxTMMoveInTM_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj,
    {
       int szBoth = (int)grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &(ti->info));
       int threshold = (ti->baseLevelInternalFormat == GL_LUMINANCE ||
-                       ti->baseLevelInternalFormat == GL_INTENSITY) ? (8 * 1024) : (16 * 1024);
-      if (szBoth <= threshold) {
+                       ti->baseLevelInternalFormat == GL_INTENSITY)
+                          ? (8 * 1024)
+                          : (16 * 1024);
+      if (szBoth <= threshold)
+      {
          where = FX_TMU_BOTH;
          ti->whichTMU = FX_TMU_BOTH;
       }
@@ -674,6 +677,24 @@ void fxTMReloadMipMapLevel(fxMesaContext fxMesa, struct gl_texture_object *tObj,
    /* Compute Glide LOD level from level index */
    lodlevel = ti->info.largeLodLog2 - (level - ti->minLevel);
 
+   /* Per-frame duplicate upload suppression for full-level reloads:
+    * If the same level on the same TMU was already uploaded this frame, skip.
+    * Reset the per-frame markers when we see a new frame. */
+   if (tmu == FX_TMU0 || tmu == FX_TMU1)
+   {
+      if (ti->upload_stamp[tmu] != fxMesa->frame_no)
+      {
+         ti->last_uploaded_level[0] = -1;
+         ti->last_uploaded_level[1] = -1;
+      }
+      else if (ti->last_uploaded_level[tmu] == level)
+      {
+         // fprintf(stderr, "UPLOAD_REASON skip_duplicate_level name=%d level=%d tmuMode=%d\n",
+         //         tObj->Name, (int)level, (int)tmu);
+         return;
+      }
+   }
+
    switch (tmu)
    {
    case FX_TMU0:
@@ -688,6 +709,7 @@ void fxTMReloadMipMapLevel(fxMesaContext fxMesa, struct gl_texture_object *tObj,
 
       fxMesa->stats.uploads_per_frame++;
       ti->upload_stamp[tmu] = fxMesa->frame_no;
+      ti->last_uploaded_level[tmu] = level;
       ti->pin_until_frame = fxMesa->frame_no + 12;
       break;
    case FX_TMU_SPLIT:
@@ -710,6 +732,8 @@ void fxTMReloadMipMapLevel(fxMesaContext fxMesa, struct gl_texture_object *tObj,
       fxMesa->stats.uploads_per_frame += 2;
       ti->upload_stamp[FX_TMU0] = fxMesa->frame_no;
       ti->upload_stamp[FX_TMU1] = fxMesa->frame_no;
+      ti->last_uploaded_level[FX_TMU0] = level;
+      ti->last_uploaded_level[FX_TMU1] = level;
       ti->pin_until_frame = fxMesa->frame_no + 1;
       break;
    case FX_TMU_BOTH:
@@ -732,6 +756,8 @@ void fxTMReloadMipMapLevel(fxMesaContext fxMesa, struct gl_texture_object *tObj,
       fxMesa->stats.uploads_per_frame += 2;
       ti->upload_stamp[FX_TMU0] = fxMesa->frame_no;
       ti->upload_stamp[FX_TMU1] = fxMesa->frame_no;
+      ti->last_uploaded_level[FX_TMU0] = level;
+      ti->last_uploaded_level[FX_TMU1] = level;
       ti->pin_until_frame = fxMesa->frame_no + 1;
       break;
 
@@ -772,6 +798,14 @@ void fxTMReloadSubMipMapLevel(fxMesaContext fxMesa,
    /* Compute lod level consistent with full uploads */
    lodlevel = ti->info.largeLodLog2 - (level - ti->minLevel);
 
+   /* Reset duplicate markers on frame change */
+   if (ti->upload_stamp[FX_TMU0] != fxMesa->frame_no &&
+       ti->upload_stamp[FX_TMU1] != fxMesa->frame_no)
+   {
+      ti->last_uploaded_level[FX_TMU0] = -1;
+      ti->last_uploaded_level[FX_TMU1] = -1;
+   }
+
    /* Compute byte-accurate row pointer */
    {
       int bpp = 2;
@@ -808,7 +842,7 @@ void fxTMReloadSubMipMapLevel(fxMesaContext fxMesa,
 
       fxMesa->stats.subuploads_per_frame++;
       ti->upload_stamp[tmu] = fxMesa->frame_no;
-      ti->pin_until_frame = fxMesa->frame_no + 12;
+      ti->last_uploaded_level[tmu] = level;
       break;
    case FX_TMU_SPLIT:
       grTexDownloadMipMapLevelPartial(GR_TMU0,
