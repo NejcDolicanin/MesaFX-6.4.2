@@ -262,6 +262,15 @@ fxAllocTexObjData(fxMesaContext fxMesa)
    ti->padded = GL_FALSE;
    ti->tObj = NULL;
 
+   /* Initialize TMU affinity fields */
+   ti->tmu_affinity = -1;     /* no affinity */
+   ti->pin_until_frame = 0;   /* not pinned */
+   ti->upload_stamp[0] = 0;   /* not uploaded */
+   ti->upload_stamp[1] = 0;   /* not uploaded */
+   ti->pool = -1;             /* no pool assigned */
+   ti->dirty_minY = -1;       /* no dirty rect */
+   ti->dirty_maxY = -1;       /* no dirty rect */
+
    return ti;
 }
 
@@ -1147,7 +1156,6 @@ fetch_rgba_dxt5(const struct gl_texture_image *texImage,
    _mesa_texformat_rgba_dxt5.FetchTexel2D(texImage, i, j, k, rgba);
 }
 
-/* Nejc - Its an emergency!!! */
 #if 0 /* break glass in case of emergency */
 static void
 PrintTexture(int w, int h, int c, const GLubyte * data)

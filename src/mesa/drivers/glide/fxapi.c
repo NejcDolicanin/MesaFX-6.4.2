@@ -1097,25 +1097,34 @@ fxMesaSwapBuffers(void)
    {
       _mesa_notifySwapBuffers(fxMesaCurrentCtx->glCtx);
 
-       /* If we have two TMUs, we can get into a situation where
-          * swap buffer commands build up.  This happens because
-          * the driver queues up the commands and returns immediately.
-          * The hardware then processes the commands in turn.
-          * If we queue up too many, we can get a lockup.
-          */
+      /* If we have two TMUs, we can get into a situation where
+       * swap buffer commands build up.  This happens because
+       * the driver queues up the commands and returns immediately.
+       * The hardware then processes the commands in turn.
+       * If we queue up too many, we can get a lockup.
+       */
       if (fxMesaCurrentCtx->haveDoubleBuffer)
       {
          grBufferSwap(fxMesaCurrentCtx->swapInterval);
-        
+
          if (fxMesaCurrentCtx->haveTwoTMUs)
          {
             /* Nejc: Enabled this - Don't allow swap buffer commands to build up! */
             while (FX_grGetInteger(GR_PENDING_BUFFERSWAPS) > fxMesaCurrentCtx->maxPendingSwapBuffers)
             {
-               usleep(10000);
+               usleep(1000); /*  usleep(10000); */
             }
          }
          fxMesaCurrentCtx->stats.swapBuffer++;
+
+         /* NEJC SOF: Reset instrumentation counters on SwapBuffers */
+         fxMesaCurrentCtx->stats.evictions_per_frame = 0;
+         fxMesaCurrentCtx->stats.uploads_per_frame = 0;
+         fxMesaCurrentCtx->stats.subuploads_per_frame = 0;
+         fxMesaCurrentCtx->stats.tmu_swaps_per_frame = 0;
+
+         /* Increment frame counter */
+         fxMesaCurrentCtx->frame_no++;
       }
    }
 }

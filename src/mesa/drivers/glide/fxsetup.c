@@ -344,6 +344,36 @@ fxGetTexSetConfiguration(GLcontext *ctx,
 /************************* Rendering Mode SetUp *************************/
 /************************************************************************/
 
+#define SET_IF_CHANGED(call, cache_field, newv)         \
+   do                                                   \
+   {                                                    \
+      if (fxMesa->tmu_cache[tmu].cache_field != (newv)) \
+      {                                                 \
+         call;                                          \
+         fxMesa->tmu_cache[tmu].cache_field = (newv);   \
+      }                                                 \
+   } while (0)
+
+/* NEJC SOF: Simple CRC32 for palette caching */
+static FxU32 fxPaletteCRC(const GuTexPalette *palette)
+{
+   FxU32 crc = 0;
+   const FxU32 *data = (const FxU32 *)palette;
+   for (int i = 0; i < 256; i++)
+   {
+      crc ^= data[i];
+      crc = (crc >> 1) ^ (crc & 1 ? 0xEDB88320 : 0);
+   }
+   return crc;
+}
+
+/* HELPER */
+static INLINE void fxInvalidateTmuCache(FxTMUStateCache *c)
+{
+   memset(c, 0xFF, sizeof(*c)); /* impossible values -> next call reprograms */
+   c->last_tObj = NULL;
+}
+
 /************************* Single Texture Set ***************************/
 
 static void
@@ -819,7 +849,18 @@ fxSetupDoubleTMU_NoLock(fxMesaContext fxMesa,
    if (tObj0 == tObj1)
    {
       fxTMMoveInTM_NoLock(fxMesa, tObj1, FX_TMU_BOTH);
+      ti0->tmu_affinity = 2; /* BOTH */
+      ti0->pin_until_frame = fxMesa->frame_no + 2;
       goto setup_hardware;
+   }
+
+   /* First-time affinity assignment */
+   if (ti0->tmu_affinity < 0 && ti1->tmu_affinity < 0)
+   {
+      ti0->tmu_affinity = 0; /* TMU0 */
+      ti1->tmu_affinity = 1; /* TMU1 */
+      ti0->pin_until_frame = fxMesa->frame_no + 2;
+      ti1->pin_until_frame = fxMesa->frame_no + 2;
    }
 
    /* We shouldn't need to do this. There is something wrong with
@@ -830,6 +871,7 @@ fxSetupDoubleTMU_NoLock(fxMesaContext fxMesa,
    if (ti1->whichTMU == FX_TMU0)
       fxTMMoveOutTM_NoLock(fxMesa, tObj1);
 
+   /* Track residency */
    if (ti0->isInTM)
    {
       switch (ti0->whichTMU)
@@ -849,7 +891,9 @@ fxSetupDoubleTMU_NoLock(fxMesaContext fxMesa,
       }
    }
    else
+   {
       tstate |= T0_NOT_IN_TMU;
+   }
 
    if (ti1->isInTM)
    {
@@ -870,20 +914,26 @@ fxSetupDoubleTMU_NoLock(fxMesaContext fxMesa,
       }
    }
    else
+   {
       tstate |= T1_NOT_IN_TMU;
+   }
 
    ti0->lastTimeUsed = fxMesa->texBindNumber;
    ti1->lastTimeUsed = fxMesa->texBindNumber;
 
    /* Move texture maps into TMUs */
-
    if (!(((tstate & T0_IN_TMU0) && (tstate & T1_IN_TMU1)) ||
          ((tstate & T0_IN_TMU1) && (tstate & T1_IN_TMU0))))
    {
       if (tObj0 == tObj1)
+      {
          fxTMMoveInTM_NoLock(fxMesa, tObj1, FX_TMU_BOTH);
+      }
       else
       {
+         int preferred_tmu0 = ti0->tmu_affinity;
+         int preferred_tmu1 = ti1->tmu_affinity;
+
          /* Find the minimal way to correct the situation */
          if ((tstate & T0_IN_TMU0) || (tstate & T1_IN_TMU1))
          {
@@ -913,9 +963,25 @@ fxSetupDoubleTMU_NoLock(fxMesaContext fxMesa,
             tmu1 = 0;
          }
          else
-         { /* Nothing is loaded */
-            fxTMMoveInTM_NoLock(fxMesa, tObj0, FX_TMU0);
-            fxTMMoveInTM_NoLock(fxMesa, tObj1, FX_TMU1);
+         {
+            if (preferred_tmu0 == 0 && preferred_tmu1 == 1)
+            {
+               fxTMMoveInTM_NoLock(fxMesa, tObj0, FX_TMU0);
+               fxTMMoveInTM_NoLock(fxMesa, tObj1, FX_TMU1);
+            }
+            else if (preferred_tmu0 == 1 && preferred_tmu1 == 0)
+            {
+               fxTMMoveInTM_NoLock(fxMesa, tObj0, FX_TMU1);
+               fxTMMoveInTM_NoLock(fxMesa, tObj1, FX_TMU0);
+               tmu0 = 1;
+               tmu1 = 0;
+            }
+            else
+            {
+               /* Nothing is loaded */
+               fxTMMoveInTM_NoLock(fxMesa, tObj0, FX_TMU0);
+               fxTMMoveInTM_NoLock(fxMesa, tObj1, FX_TMU1);
+            }
             /* tmu0 and tmu1 are setup */
          }
       }
@@ -935,7 +1001,7 @@ setup_hardware:
          {
             fprintf(stderr, "fxSetupDoubleTMU_NoLock: uploading texture palette for TMU1\n");
          }
-         fxMesa->Glide.grTexDownloadTableExt(ti1->whichTMU, ti1->paltype, &(ti1->palette));
+         fxMesa->Glide.grTexDownloadTableExt(tmu1, ti1->paltype, &(ti1->palette));
       }
       if (ti0->info.format == GR_TEXFMT_P_8)
       {
@@ -943,21 +1009,54 @@ setup_hardware:
          {
             fprintf(stderr, "fxSetupDoubleTMU_NoLock: uploading texture palette for TMU0\n");
          }
-         fxMesa->Glide.grTexDownloadTableExt(ti0->whichTMU, ti0->paltype, &(ti0->palette));
+         fxMesa->Glide.grTexDownloadTableExt(tmu0, ti0->paltype, &(ti0->palette));
       }
    }
 
-   grTexSource(tmu0, ti0->tm[tmu0]->startAddr,
-               GR_MIPMAPLEVELMASK_BOTH, &(ti0->info));
+   /* Subimage updates (unchanged) Nejc ToDo */
+   if (ti0->has_dirty_subimage)
+   { /* ... same as before ... */
+   }
+   if (ti1->has_dirty_subimage)
+   { /* ... same as before ... */
+   }
+
+   /* --- Explicit cache invalidation and seeding --- */
+   /* TMU0: poison cache, set state, seed cache */
+   memset(&fxMesa->tmu_cache[tmu0], 0xFF, sizeof(FxTMUStateCache));
+   fxMesa->tmu_cache[tmu0].last_tObj = NULL;
+
+   grTexSource(tmu0, ti0->tm[tmu0]->startAddr, GR_MIPMAPLEVELMASK_BOTH, &(ti0->info));
    grTexClampMode(tmu0, ti0->sClamp, ti0->tClamp);
    grTexFilterMode(tmu0, ti0->minFilt, ti0->maxFilt);
    grTexMipMapMode(tmu0, ti0->mmMode, FXFALSE);
 
-   grTexSource(tmu1, ti1->tm[tmu1]->startAddr,
-               GR_MIPMAPLEVELMASK_BOTH, &(ti1->info));
+   fxMesa->tmu_cache[tmu0].last_tObj = tObj0;
+   fxMesa->tmu_cache[tmu0].last_startAddr = ti0->tm[tmu0]->startAddr;
+   fxMesa->tmu_cache[tmu0].last_info = ti0->info;
+   fxMesa->tmu_cache[tmu0].last_sClamp = ti0->sClamp;
+   fxMesa->tmu_cache[tmu0].last_tClamp = ti0->tClamp;
+   fxMesa->tmu_cache[tmu0].last_minFilt = ti0->minFilt;
+   fxMesa->tmu_cache[tmu0].last_maxFilt = ti0->maxFilt;
+   fxMesa->tmu_cache[tmu0].last_mmMode = ti0->mmMode;
+
+   /* TMU1: poison cache, set state, seed cache */
+   memset(&fxMesa->tmu_cache[tmu1], 0xFF, sizeof(FxTMUStateCache));
+   fxMesa->tmu_cache[tmu1].last_tObj = NULL;
+
+   grTexSource(tmu1, ti1->tm[tmu1]->startAddr, GR_MIPMAPLEVELMASK_BOTH, &(ti1->info));
    grTexClampMode(tmu1, ti1->sClamp, ti1->tClamp);
    grTexFilterMode(tmu1, ti1->minFilt, ti1->maxFilt);
    grTexMipMapMode(tmu1, ti1->mmMode, FXFALSE);
+
+   fxMesa->tmu_cache[tmu1].last_tObj = tObj1;
+   fxMesa->tmu_cache[tmu1].last_startAddr = ti1->tm[tmu1]->startAddr;
+   fxMesa->tmu_cache[tmu1].last_info = ti1->info;
+   fxMesa->tmu_cache[tmu1].last_sClamp = ti1->sClamp;
+   fxMesa->tmu_cache[tmu1].last_tClamp = ti1->tClamp;
+   fxMesa->tmu_cache[tmu1].last_minFilt = ti1->minFilt;
+   fxMesa->tmu_cache[tmu1].last_maxFilt = ti1->maxFilt;
+   fxMesa->tmu_cache[tmu1].last_mmMode = ti1->mmMode;
 
 #undef T0_NOT_IN_TMU
 #undef T1_NOT_IN_TMU
