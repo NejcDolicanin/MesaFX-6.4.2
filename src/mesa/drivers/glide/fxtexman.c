@@ -536,6 +536,9 @@ void fxTMMoveInTM_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj,
 
          fxMesa->stats.uploads_per_frame++;
       }
+      /* Pin and stamp after full upload */
+      ti->upload_stamp[where] = fxMesa->frame_no;
+      ti->pin_until_frame = fxMesa->frame_no + 12;
       break;
    case FX_TMU_SPLIT:
       texmemsize = (int)grTexTextureMemRequired(GR_MIPMAPLEVELMASK_ODD, &(ti->info));
@@ -573,6 +576,10 @@ void fxTMMoveInTM_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj,
 
          fxMesa->stats.uploads_per_frame += 2;
       }
+      /* Pin and stamp after full upload */
+      ti->upload_stamp[FX_TMU0] = fxMesa->frame_no;
+      ti->upload_stamp[FX_TMU1] = fxMesa->frame_no;
+      ti->pin_until_frame = fxMesa->frame_no + 12;
       break;
    case FX_TMU_BOTH:
       texmemsize = (int)grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &(ti->info));
@@ -609,6 +616,10 @@ void fxTMMoveInTM_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj,
 
          fxMesa->stats.uploads_per_frame += 2;
       }
+      /* Pin and stamp after full upload */
+      ti->upload_stamp[FX_TMU0] = fxMesa->frame_no;
+      ti->upload_stamp[FX_TMU1] = fxMesa->frame_no;
+      ti->pin_until_frame = fxMesa->frame_no + 12;
       break;
    default:
       fprintf(stderr, "fxTMMoveInTM_NoLock: INTERNAL ERROR: wrong tmu (%d)\n", where);
@@ -676,6 +687,8 @@ void fxTMReloadMipMapLevel(fxMesaContext fxMesa, struct gl_texture_object *tObj,
                                GR_MIPMAPLEVELMASK_BOTH, texImage->Data);
 
       fxMesa->stats.uploads_per_frame++;
+      ti->upload_stamp[tmu] = fxMesa->frame_no;
+      ti->pin_until_frame = fxMesa->frame_no + 12;
       break;
    case FX_TMU_SPLIT:
       grTexDownloadMipMapLevel(GR_TMU0,
@@ -695,6 +708,9 @@ void fxTMReloadMipMapLevel(fxMesaContext fxMesa, struct gl_texture_object *tObj,
                                GR_MIPMAPLEVELMASK_EVEN, texImage->Data);
 
       fxMesa->stats.uploads_per_frame += 2;
+      ti->upload_stamp[FX_TMU0] = fxMesa->frame_no;
+      ti->upload_stamp[FX_TMU1] = fxMesa->frame_no;
+      ti->pin_until_frame = fxMesa->frame_no + 1;
       break;
    case FX_TMU_BOTH:
       grTexDownloadMipMapLevel(GR_TMU0,
@@ -714,6 +730,9 @@ void fxTMReloadMipMapLevel(fxMesaContext fxMesa, struct gl_texture_object *tObj,
                                GR_MIPMAPLEVELMASK_BOTH, texImage->Data);
 
       fxMesa->stats.uploads_per_frame += 2;
+      ti->upload_stamp[FX_TMU0] = fxMesa->frame_no;
+      ti->upload_stamp[FX_TMU1] = fxMesa->frame_no;
+      ti->pin_until_frame = fxMesa->frame_no + 1;
       break;
 
    default:
@@ -788,6 +807,8 @@ void fxTMReloadSubMipMapLevel(fxMesaContext fxMesa,
                                       yoffset, yoffset + height - 1);
 
       fxMesa->stats.subuploads_per_frame++;
+      ti->upload_stamp[tmu] = fxMesa->frame_no;
+      ti->pin_until_frame = fxMesa->frame_no + 12;
       break;
    case FX_TMU_SPLIT:
       grTexDownloadMipMapLevelPartial(GR_TMU0,
@@ -809,6 +830,9 @@ void fxTMReloadSubMipMapLevel(fxMesaContext fxMesa,
                                       yoffset, yoffset + height - 1);
 
       fxMesa->stats.subuploads_per_frame += 2;
+      ti->upload_stamp[FX_TMU0] = fxMesa->frame_no;
+      ti->upload_stamp[FX_TMU1] = fxMesa->frame_no;
+      ti->pin_until_frame = fxMesa->frame_no + 12;
       break;
    case FX_TMU_BOTH:
       grTexDownloadMipMapLevelPartial(GR_TMU0,
@@ -830,6 +854,9 @@ void fxTMReloadSubMipMapLevel(fxMesaContext fxMesa,
                                       yoffset, yoffset + height - 1);
 
       fxMesa->stats.subuploads_per_frame += 2;
+      ti->upload_stamp[FX_TMU0] = fxMesa->frame_no;
+      ti->upload_stamp[FX_TMU1] = fxMesa->frame_no;
+      ti->pin_until_frame = fxMesa->frame_no + 12;
       break;
    default:
       fprintf(stderr, "fxTMReloadSubMipMapLevel: INTERNAL ERROR: wrong tmu (%d)\n", tmu);

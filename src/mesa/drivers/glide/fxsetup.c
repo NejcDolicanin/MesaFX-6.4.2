@@ -941,53 +941,72 @@ fxSetupDoubleTMU_NoLock(fxMesaContext fxMesa,
       }
       else
       {
-         /* Estimate sizes and choose placement that fits better */
-         int size0 = (int)grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &(ti0->info));
-         int size1 = (int)grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &(ti1->info));
-         GLuint free0 = fxMesa->freeTexMem[FX_TMU0];
-         GLuint free1 = fxMesa->freeTexMem[FX_TMU1];
-
-         /* Prefer mapping the larger texture to the TMU with more free memory.
-            Use per-frame upload load bytes for tie-breaking. */
-         if (size0 >= size1)
+         GLboolean ti0_is_lm = (ti0->baseLevelInternalFormat == GL_LUMINANCE) ||
+                               (ti0->baseLevelInternalFormat == GL_INTENSITY);
+         GLboolean ti1_is_lm = (ti1->baseLevelInternalFormat == GL_LUMINANCE) ||
+                               (ti1->baseLevelInternalFormat == GL_INTENSITY);
+         if (ti0_is_lm ^ ti1_is_lm)
          {
-            if (free0 >= free1)
-            {
-               ti0->tmu_affinity = FX_TMU0;
-               ti1->tmu_affinity = FX_TMU1;
-            }
-            else
+            /* Send lightmap to TMU1, base/albedo to TMU0 */
+            if (ti0_is_lm)
             {
                ti0->tmu_affinity = FX_TMU1;
                ti1->tmu_affinity = FX_TMU0;
+            }
+            else
+            {
+               ti1->tmu_affinity = FX_TMU1;
+               ti0->tmu_affinity = FX_TMU0;
             }
          }
          else
          {
-            if (free1 >= free0)
-            {
-               ti1->tmu_affinity = FX_TMU1;
-               ti0->tmu_affinity = FX_TMU0;
-            }
-            else
-            {
-               ti1->tmu_affinity = FX_TMU0;
-               ti0->tmu_affinity = FX_TMU1;
-            }
-         }
+            /* Estimate sizes and choose placement that fits better */
+            int size0 = (int)grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &(ti0->info));
+            int size1 = (int)grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &(ti1->info));
+            GLuint free0 = fxMesa->freeTexMem[FX_TMU0];
+            GLuint free1 = fxMesa->freeTexMem[FX_TMU1];
 
-         /* If still ambiguous, use per-frame upload load heuristic */
-         if (ti0->tmu_affinity == ti1->tmu_affinity)
-         {
-            if (fxMesa->stats.bytes_uploaded_tmu[FX_TMU0] <= fxMesa->stats.bytes_uploaded_tmu[FX_TMU1])
+            if (size0 >= size1)
             {
-               ti0->tmu_affinity = FX_TMU0;
-               ti1->tmu_affinity = FX_TMU1;
+               if (free0 >= free1)
+               {
+                  ti0->tmu_affinity = FX_TMU0;
+                  ti1->tmu_affinity = FX_TMU1;
+               }
+               else
+               {
+                  ti0->tmu_affinity = FX_TMU1;
+                  ti1->tmu_affinity = FX_TMU0;
+               }
             }
             else
             {
-               ti0->tmu_affinity = FX_TMU1;
-               ti1->tmu_affinity = FX_TMU0;
+               if (free1 >= free0)
+               {
+                  ti1->tmu_affinity = FX_TMU1;
+                  ti0->tmu_affinity = FX_TMU0;
+               }
+               else
+               {
+                  ti1->tmu_affinity = FX_TMU0;
+                  ti0->tmu_affinity = FX_TMU1;
+               }
+            }
+
+            /* If still ambiguous, use per-frame upload load heuristic */
+            if (ti0->tmu_affinity == ti1->tmu_affinity)
+            {
+               if (fxMesa->stats.bytes_uploaded_tmu[FX_TMU0] <= fxMesa->stats.bytes_uploaded_tmu[FX_TMU1])
+               {
+                  ti0->tmu_affinity = FX_TMU0;
+                  ti1->tmu_affinity = FX_TMU1;
+               }
+               else
+               {
+                  ti0->tmu_affinity = FX_TMU1;
+                  ti1->tmu_affinity = FX_TMU0;
+               }
             }
          }
       }
@@ -1226,8 +1245,8 @@ fxSetupTextureDoubleTMU_NoLock(GLcontext *ctx)
 
    unitsmode = fxGetTexSetConfiguration(ctx, tObj0, tObj1);
 
-      if(fxMesa->lastUnitsMode==unitsmode) 
-         return;
+   if (fxMesa->lastUnitsMode == unitsmode)
+      return;
 
    fxMesa->lastUnitsMode = unitsmode;
 
