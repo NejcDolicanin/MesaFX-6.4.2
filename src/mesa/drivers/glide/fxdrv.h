@@ -308,10 +308,10 @@ typedef struct tfxTexInfo_t
    GLboolean padded;
 
    /* NEJC SOF: New fields for TMU affinity and pinning */
-   GLint tmu_affinity;     /* -1 = none, 0/1 = prefer this TMU */
-   GLuint pin_until_frame; /* frame index until which we refuse to move it */
-   GLuint upload_stamp[2]; /* last frame this texture was uploaded to TMU n */
-
+   GLint tmu_affinity;       /* -1 = none, 0/1 = prefer this TMU */
+   GLuint pin_until_frame;   /* frame index until which we refuse to move it */
+   GLuint upload_stamp[2];   /* last frame this texture was uploaded to TMU n */
+   FxU32 upload_addr[2];     /* startAddr used for that upload per TMU */
    GLuint last_upload_epoch; /* Track last upload epoch to force re-upload after global resets */
 
    /* Pool selection sanity */

@@ -46,6 +46,23 @@
 #include "texobj.h"
 #include "texstore.h"
 
+/* Compatibility tokens for older headers/builds */
+#ifndef GL_MIRRORED_REPEAT
+#define GL_MIRRORED_REPEAT 0x8370
+#endif
+#ifndef GL_RGB_S3TC
+#define GL_RGB_S3TC 0x83A0
+#endif
+#ifndef GL_RGB4_S3TC
+#define GL_RGB4_S3TC 0x83A1
+#endif
+#ifndef GL_RGBA_S3TC
+#define GL_RGBA_S3TC 0x83A2
+#endif
+#ifndef GL_RGBA4_S3TC
+#define GL_RGBA4_S3TC 0x83A3
+#endif
+
 /* no borders! can't halve 1x1! (stride > width * comp) not allowed */
 static void
 _mesa_halve2x2_teximage2d(GLcontext *ctx,
@@ -215,7 +232,8 @@ fxTexInvalidate(GLcontext *ctx, struct gl_texture_object *tObj)
    if (ti->isInTM)
       fxTMMoveOutTM(fxMesa, tObj); /* TO DO: SLOW but easy to write */
 
-   ti->validated = GL_FALSE;
+   /* Force invalidation */
+   /* ti->validated = GL_FALSE; */
    fxMesa->new_state |= FX_NEW_TEXTURING;
 }
 
@@ -1859,7 +1877,28 @@ void fxDDTexSubImage2D(GLcontext *ctx, GLenum target, GLint level,
 
    if (ti->validated && ti->isInTM && !texObj->GenerateMipmap)
    {
-      fxTMReloadMipMapLevel(fxMesa, texObj, level);
+      /* Prefer partial row uploads when the subimage spans full width.
+         Glide's grTexDownloadMipMapLevelPartial only supports y-range (rows). */
+      if (!texImage->IsCompressed &&
+          xoffset == 0 &&
+          width == texImage->Width)
+      {
+         GLint y0 = yoffset * mml->hScale;
+         GLint h  = height  * mml->hScale;
+         if (h < 1) h = 1;
+         if (y0 < 0) y0 = 0;
+         if (y0 + h > mml->height) h = mml->height - y0;
+         if (h > 0) {
+            fxTMReloadSubMipMapLevel(fxMesa, texObj, level, y0, h);
+         } else {
+            fxTMReloadMipMapLevel(fxMesa, texObj, level);
+         }
+      }
+      else
+      {
+         /* Fallback to full-level upload for non-row-aligned subimages or compressed formats */
+         fxTMReloadMipMapLevel(fxMesa, texObj, level);
+      }
    }
    else
    {
@@ -2033,8 +2072,8 @@ void fxDDCompressedTexSubImage2D(GLcontext *ctx, GLenum target,
    for (i = 0; i < rows; i++)
    {
       MEMCPY(dest, data, srcRowStride);
-      dest += destRowStride;
-      data = (GLvoid *)((GLuint)data + (GLuint)srcRowStride);
+      dest = (GLubyte *)((GLuint)dest + (GLuint)destRowStride);
+      data = (const GLvoid *)((GLuint)data + (GLuint)srcRowStride);
    }
 
    /* [dBorca] Hack alert:
