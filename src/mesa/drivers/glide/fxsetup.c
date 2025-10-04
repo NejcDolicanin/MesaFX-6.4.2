@@ -374,6 +374,49 @@ static INLINE void fxInvalidateTmuCache(FxTMUStateCache *c)
    c->last_tObj = NULL;
 }
 
+/* Nejc TMU Optimizations - Centralized TMU chooser for single-texture placement and load balancing */
+static GLint fxChooseBestTMU(fxMesaContext fxMesa, tfxTexInfo *ti)
+{
+   /* Respect LOD blend and UMA upfront */
+   if (ti->LODblend)
+      return FX_TMU_SPLIT;
+   if (!fxMesa->haveTwoTMUs || fxMesa->HaveTexUma)
+      return FX_TMU0;
+
+   /* If texture is already resident on a single TMU, keep it there */
+   if (ti->isInTM && (ti->whichTMU == FX_TMU0 || ti->whichTMU == FX_TMU1))
+      return (GLint)ti->whichTMU;
+
+   /* Pinning/affinity hint (set by multitexture setup) */
+   if ((ti->tmu_affinity == 0 || ti->tmu_affinity == 1) &&
+       (ti->pin_until_frame != 0 && ti->pin_until_frame > fxMesa->frame_no))
+   {
+      return ti->tmu_affinity;
+   }
+
+   /* Check addressability on each TMU first (fast-path availability) */
+   GLboolean ok0 = fxTMCheckStartAddr(fxMesa, FX_TMU0, ti);
+   GLboolean ok1 = fxTMCheckStartAddr(fxMesa, FX_TMU1, ti);
+   if (ok0 && !ok1)
+      return FX_TMU0;
+   if (!ok0 && ok1)
+      return FX_TMU1;
+
+   /* Both TMUs can host it: choose by free memory, then soft round-robin */
+   if (ok0 && ok1)
+   {
+      if (fxMesa->freeTexMem[FX_TMU0] > fxMesa->freeTexMem[FX_TMU1])
+         return FX_TMU0;
+      if (fxMesa->freeTexMem[FX_TMU1] > fxMesa->freeTexMem[FX_TMU0])
+         return FX_TMU1;
+      /* Tie-breaker: alternate by bind number to balance load */
+      return (fxMesa->texBindNumber & 1) ? FX_TMU1 : FX_TMU0;
+   }
+
+   /* Fallback: prefer TMU0 */
+   return FX_TMU0;
+}
+
 /************************* Single Texture Set ***************************/
 
 static void
@@ -407,23 +450,25 @@ fxSetupSingleTMU_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj)
    /* Make sure we're loaded correctly */
    if (!ti->isInTM)
    {
-      if (ti->LODblend)
+      GLint targetTMU = fxChooseBestTMU(fxMesa, ti);
+
+      if (targetTMU == FX_TMU_SPLIT)
+      {
          fxTMMoveInTM_NoLock(fxMesa, tObj, FX_TMU_SPLIT);
+      }
       else
       {
-         if (fxMesa->haveTwoTMUs)
-         {
-            if (fxTMCheckStartAddr(fxMesa, FX_TMU0, ti))
-            {
-               fxTMMoveInTM_NoLock(fxMesa, tObj, FX_TMU0);
-            }
-            else
-            {
-               fxTMMoveInTM_NoLock(fxMesa, tObj, FX_TMU1);
-            }
-         }
-         else
-            fxTMMoveInTM_NoLock(fxMesa, tObj, FX_TMU0);
+         fxTMMoveInTM_NoLock(fxMesa, tObj, targetTMU);
+      }
+
+      /* Seed affinity and short pin to reduce immediate thrash */
+      if (ti->tmu_affinity < 0 && (targetTMU == FX_TMU0 || targetTMU == FX_TMU1))
+      {
+         ti->tmu_affinity = targetTMU;
+      }
+      if (ti->pin_until_frame < fxMesa->frame_no + 2)
+      {
+         ti->pin_until_frame = fxMesa->frame_no + 2;
       }
    }
 
@@ -458,14 +503,21 @@ fxSetupSingleTMU_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj)
       else
          tmu = ti->whichTMU;
 
-      /* pointcast */
+      /* Nejc TMU Optimizations - pointcast with palette caching */
       if ((ti->info.format == GR_TEXFMT_P_8) && (!fxMesa->haveGlobalPaletteTexture))
       {
-         if (TDFX_DEBUG & VERBOSE_DRIVER)
+         FxTMUStateCache *c = &fxMesa->tmu_cache[tmu];
+         FxU32 crc = fxPaletteCRC(&ti->palette);
+
+         if (c->last_palette_crc[tmu] != crc)
          {
-            fprintf(stderr, "fxSetupSingleTMU_NoLock: uploading texture palette\n");
+            if (TDFX_DEBUG & VERBOSE_DRIVER)
+            {
+               fprintf(stderr, "fxSetupSingleTMU_NoLock: uploading texture palette\n");
+            }
+            fxMesa->Glide.grTexDownloadTableExt(tmu, ti->paltype, &(ti->palette));
+            c->last_palette_crc[tmu] = crc;
          }
-         fxMesa->Glide.grTexDownloadTableExt(tmu, ti->paltype, &(ti->palette));
       }
 
       /* KW: The alternative is to do the download to the other tmu.  If
@@ -477,10 +529,10 @@ fxSetupSingleTMU_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj)
          fprintf(stderr, "fxSetupSingleTMU_NoLock: not blending texture - only one tmu\n");
       }
 
+      /* Safe path: always (re)program TMU state for single-texture to avoid stale cached state */
       grTexClampMode(tmu, ti->sClamp, ti->tClamp);
       grTexFilterMode(tmu, ti->minFilt, ti->maxFilt);
       grTexMipMapMode(tmu, ti->mmMode, FXFALSE);
-
       grTexSource(tmu, ti->tm[tmu]->startAddr, GR_MIPMAPLEVELMASK_BOTH, &(ti->info));
    }
 }
@@ -593,8 +645,11 @@ fxSetupTextureSingleTMU_NoLock(GLcontext *ctx, GLuint textureset)
       tmu = FX_TMU0;
    else
       tmu = ti->whichTMU;
-   if (fxMesa->tmuSrc != tmu)
-      fxSelectSingleTMUSrc_NoLock(fxMesa, tmu, ti->LODblend);
+
+   /* Always program texture combine for single-TMU path.
+      Rationale: On first entry into SoF menu, fxMesa->tmuSrc may default to TMU0,
+      skipping grTexCombine programming and yielding flat color. */
+   fxSelectSingleTMUSrc_NoLock(fxMesa, tmu, ti->LODblend);
 
    if (textureset == 0 || !fxMesa->haveTwoTMUs)
       unitsmode = fxGetTexSetConfiguration(ctx, tObj, NULL);
