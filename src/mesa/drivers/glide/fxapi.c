@@ -1097,6 +1097,9 @@ fxMesaSwapBuffers(void)
    {
       _mesa_notifySwapBuffers(fxMesaCurrentCtx->glCtx);
 
+      /* TMU Optimizations - flush any coalesced partial texture updates before swap */
+      fxTMFlushPendingSubUploads_NoLock(fxMesaCurrentCtx);
+
       /* If we have two TMUs, we can get into a situation where
        * swap buffer commands build up.  This happens because
        * the driver queues up the commands and returns immediately.
@@ -1122,6 +1125,10 @@ fxMesaSwapBuffers(void)
          fxMesaCurrentCtx->stats.uploads_per_frame = 0;
          fxMesaCurrentCtx->stats.subuploads_per_frame = 0;
          fxMesaCurrentCtx->stats.tmu_swaps_per_frame = 0;
+
+         /* TMU Optimizations - reset per-TMU upload bytes for next frame */
+         fxMesaCurrentCtx->stats.bytes_uploaded_tmu[FX_TMU0] = 0;
+         fxMesaCurrentCtx->stats.bytes_uploaded_tmu[FX_TMU1] = 0;
 
          /* Increment frame counter */
          fxMesaCurrentCtx->frame_no++;

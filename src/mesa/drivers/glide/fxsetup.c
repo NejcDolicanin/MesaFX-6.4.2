@@ -409,6 +409,13 @@ static GLint fxChooseBestTMU(fxMesaContext fxMesa, tfxTexInfo *ti)
          return FX_TMU0;
       if (fxMesa->freeTexMem[FX_TMU1] > fxMesa->freeTexMem[FX_TMU0])
          return FX_TMU1;
+
+      /* Secondary heuristic: prefer the TMU with less upload load this frame */
+      if (fxMesa->stats.bytes_uploaded_tmu[FX_TMU0] < fxMesa->stats.bytes_uploaded_tmu[FX_TMU1])
+         return FX_TMU0;
+      if (fxMesa->stats.bytes_uploaded_tmu[FX_TMU1] < fxMesa->stats.bytes_uploaded_tmu[FX_TMU0])
+         return FX_TMU1;
+
       /* Tie-breaker: alternate by bind number to balance load */
       return (fxMesa->texBindNumber & 1) ? FX_TMU1 : FX_TMU0;
    }
@@ -495,6 +502,12 @@ fxSetupSingleTMU_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj)
                   GR_MIPMAPLEVELMASK_ODD, &(ti->info));
       grTexSource(GR_TMU1, ti->tm[FX_TMU1]->startAddr,
                   GR_MIPMAPLEVELMASK_EVEN, &(ti->info));
+
+      /* Nejc TMU Optimizations - for split LOD blend, ensure separate ST/W per TMU */
+      fxMesa->stw_hint_state |= (GR_STWHINT_ST_DIFF_TMU1 |
+                                 GR_STWHINT_W_DIFF_TMU0 |
+                                 GR_STWHINT_W_DIFF_TMU1);
+      FX_grHints_NoLock(GR_HINT_STWHINT, fxMesa->stw_hint_state);
    }
    else
    {
@@ -661,7 +674,9 @@ fxSetupTextureSingleTMU_NoLock(GLcontext *ctx, GLuint textureset)
 
    fxMesa->lastUnitsMode = unitsmode;
 
-   fxMesa->stw_hint_state = 0;
+   fxMesa->stw_hint_state |= (GR_STWHINT_ST_DIFF_TMU1 |
+                              GR_STWHINT_W_DIFF_TMU0 |
+                              GR_STWHINT_W_DIFF_TMU1);
    FX_grHints_NoLock(GR_HINT_STWHINT, 0);
 
    ifmt = ti->baseLevelInternalFormat;
