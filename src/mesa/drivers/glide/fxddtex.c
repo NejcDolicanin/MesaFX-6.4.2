@@ -228,12 +228,8 @@ fxTexInvalidate(GLcontext *ctx, struct gl_texture_object *tObj)
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    tfxTexInfo *ti = fxTMGetTexInfo(tObj);
 
-   /* Nejc... Smarter keepResidentOnInvalidate:
-    * - Default: keep resident and defer to next bind
-    * - But evict immediately for cases known to require reallocation or fresh palette:
-    *   1) Paletted textures without global palette (Quake2 menus/cinematics)
-    *   2) Allocation size mismatch vs. new (format/lod) requirements
-    */
+   /* if (!fxMesa->keepResidentOnInvalidate ||
+       (ti->isInTM && ti->info.format == GR_TEXFMT_P_8 && fxMesa->haveGlobalPaletteTexture))*/
    if (!fxMesa->keepResidentOnInvalidate)
    {
       if (ti->isInTM)
@@ -241,66 +237,11 @@ fxTexInvalidate(GLcontext *ctx, struct gl_texture_object *tObj)
          fxTMMoveOutTM(fxMesa, tObj);
       }
    }
-   else if (ti && ti->isInTM)
+
+   /* OLD SIMPLE */
+   if (ti->isInTM)
    {
-      FxBool force_evict = FXFALSE;
-
-      /* Case 1: Paletted textures without global palette tend to change palette rapidly */
-      if (!fxMesa->haveGlobalPaletteTexture &&
-          ti->info.format == GR_TEXFMT_P_8)
-      {
-         force_evict = FXTRUE;
-      }
-
-      /* Case 2: Reallocation required due to format/lod change (size mismatch) */
-      if (!force_evict)
-      {
-         int allocated0 = 0, allocated1 = 0;
-         int required0 = 0, required1 = 0;
-
-         switch (ti->whichTMU)
-         {
-         case FX_TMU0:
-         case FX_TMU1:
-            if (ti->tm[ti->whichTMU])
-            {
-               allocated0 = (int)(ti->tm[ti->whichTMU]->endAddr - ti->tm[ti->whichTMU]->startAddr);
-               required0 = (int)grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &(ti->info));
-               if (allocated0 != required0)
-                  force_evict = FXTRUE;
-            }
-            break;
-         case FX_TMU_BOTH:
-            if (ti->tm[FX_TMU0] && ti->tm[FX_TMU1])
-            {
-               allocated0 = (int)(ti->tm[FX_TMU0]->endAddr - ti->tm[FX_TMU0]->startAddr);
-               allocated1 = (int)(ti->tm[FX_TMU1]->endAddr - ti->tm[FX_TMU1]->startAddr);
-               required0 = (int)grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &(ti->info));
-               required1 = required0; /* both TMUs get full set */
-               if (allocated0 != required0 || allocated1 != required1)
-                  force_evict = FXTRUE;
-            }
-            break;
-         case FX_TMU_SPLIT:
-            if (ti->tm[FX_TMU0] && ti->tm[FX_TMU1])
-            {
-               allocated0 = (int)(ti->tm[FX_TMU0]->endAddr - ti->tm[FX_TMU0]->startAddr);
-               allocated1 = (int)(ti->tm[FX_TMU1]->endAddr - ti->tm[FX_TMU1]->startAddr);
-               required0 = (int)grTexTextureMemRequired(GR_MIPMAPLEVELMASK_ODD, &(ti->info));
-               required1 = (int)grTexTextureMemRequired(GR_MIPMAPLEVELMASK_EVEN, &(ti->info));
-               if (allocated0 != required0 || allocated1 != required1)
-                  force_evict = FXTRUE;
-            }
-            break;
-         default:
-            break;
-         }
-      }
-
-      if (force_evict)
-      {
-         fxTMMoveOutTM(fxMesa, tObj);
-      }
+      fxTMMoveOutTM(fxMesa, tObj);
    }
 
    /* Mark for revalidation; fxSetup path will reload or reallocate as needed */
