@@ -815,13 +815,6 @@ fxSetupDoubleTMU_NoLock(fxMesaContext fxMesa,
       fprintf(stderr, "fxSetupDoubleTMU_NoLock(...)\n");
    }
 
-   /* NEJC SOF TMU: Early exit for same texture object to avoid unnecessary work */
-   if (tObj0 == tObj1)
-   {
-      fxTMMoveInTM_NoLock(fxMesa, tObj1, FX_TMU_BOTH);
-      goto setup_hardware;
-   }
-
    /* We shouldn't need to do this. There is something wrong with
       mutlitexturing when the TMUs are swapped. So, we're forcing
       them to always be loaded correctly. !!! */
@@ -921,7 +914,6 @@ fxSetupDoubleTMU_NoLock(fxMesaContext fxMesa,
       }
    }
 
-setup_hardware:
    /* [dBorca] Hack alert:
     * we put these in reverse order, so that if we can't
     * do _REAL_ pointcast, the TMU0 table gets broadcasted

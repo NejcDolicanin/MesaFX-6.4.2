@@ -45,14 +45,6 @@
 #include "drivers/common/driverfuncs.h"
 #include "framebuffer.h"
 
-/* NEJC SOF TMU: Include headers for sleep functions */
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <unistd.h>
-#include <sched.h>
-#endif
-
 #ifndef TDFX_DEBUG
 int TDFX_DEBUG = (0
                   /*		  | VERBOSE_VARRAY      */  /* fxtris.c */
@@ -1034,7 +1026,7 @@ fxMesaDestroyContext(fxMesaContext fxMesa)
    _mesa_destroy_visual(fxMesa->glVis);
    _mesa_destroy_context(fxMesa->glCtx);
    _mesa_destroy_framebuffer(fxMesa->glBuffer); /*Nejc ToDo - we now use fxFramebuffer so check this*/
-   fxTMClose(fxMesa);                           /* must be after _mesa_destroy_context */
+   fxTMClose(fxMesa); /* must be after _mesa_destroy_context */
 
    FREE(fxMesa);
 
@@ -1109,35 +1101,19 @@ fxMesaSwapBuffers(void)
       {
          grBufferSwap(fxMesaCurrentCtx->swapInterval);
 
-         /* NEJC SOF TMU: Enable buffer swap synchronization to prevent stuttering
-          * This is especially important with multi-TMU operations that can cause
-          * buffer swaps to build up and create timing issues */
-         if (fxMesaCurrentCtx->haveTwoTMUs)
-         {
-            /* More aggressive synchronization for multi-TMU to prevent stutter */
-            while (FX_grGetInteger(GR_PENDING_BUFFERSWAPS) > 1)
-            {
-               /* Brief yield to prevent CPU spinning while waiting */
-#ifdef _WIN32
-               Sleep(0); /* Yield timeslice */
-#else
-               sched_yield(); /* Yield to other threads */
+#if 0
+	 /*
+	  * Don't allow swap buffer commands to build up!
+	  */
+	 while (FX_grGetInteger(GR_PENDING_BUFFERSWAPS) >
+		fxMesaCurrentCtx->maxPendingSwapBuffers)
+	    /* The driver is able to sleep when waiting for the completation
+	       of multiple swapbuffer operations instead of wasting
+	       CPU time (NOTE: you must uncomment the following line in the
+	       in order to enable this option) */
+	    /* usleep(10000); */
+	    ;
 #endif
-            }
-         }
-         else
-         {
-            /* Standard synchronization for single TMU */
-            while (FX_grGetInteger(GR_PENDING_BUFFERSWAPS) >
-                   fxMesaCurrentCtx->maxPendingSwapBuffers)
-            {
-#ifdef _WIN32
-               Sleep(0); /* Yield timeslice */
-#else
-               sched_yield(); /* Yield to other threads */
-#endif
-            }
-         }
 
          fxMesaCurrentCtx->stats.swapBuffer++;
       }
