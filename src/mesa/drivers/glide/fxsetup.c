@@ -522,7 +522,7 @@ fxSetupSingleTMU_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj)
       else
          tmu = ti->whichTMU;
 
-      /* Nejc... TMU Optimizations - pointcast with palette caching */
+      /* Nejc TMU Optimizations - pointcast with palette caching */
       if ((ti->info.format == GR_TEXFMT_P_8) && (!fxMesa->haveGlobalPaletteTexture))
       {
          FxTMUStateCache *c = &fxMesa->tmu_cache[tmu];
@@ -553,6 +553,18 @@ fxSetupSingleTMU_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj)
       grTexFilterMode(tmu, ti->minFilt, ti->maxFilt);
       grTexMipMapMode(tmu, ti->mmMode, FXFALSE);
       grTexSource(tmu, ti->tm[tmu]->startAddr, GR_MIPMAPLEVELMASK_BOTH, &(ti->info));
+
+      /* Nejc... If texture was invalidated but kept resident, push new CPU-side data now */
+      if (ti->isInTM && !ti->validated)
+      {
+         int l, i;
+         for (i = FX_largeLodValue(ti->info), l = ti->minLevel;
+              i <= FX_smallLodValue(ti->info); i++, l++)
+         {
+            fxTMReloadMipMapLevel(fxMesa, tObj, l);
+         }
+         ti->validated = GL_TRUE;
+      }
    }
 }
 
