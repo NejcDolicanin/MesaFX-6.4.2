@@ -242,12 +242,6 @@ fxTexInvalidate(GLcontext *ctx, struct gl_texture_object *tObj, tfxInvalidateRea
       fxMesa->tmu_cache[ti->whichTMU].last_tObj = NULL;
    }
 
-   /* OLD */
-   // if (ti->isInTM)
-   // {
-   //    fxTMMoveOutTM(fxMesa, tObj);
-   // }
-
    /* Mark for revalidation; fxSetup path will reload or reallocate as needed */
    ti->validated = GL_FALSE;
    fxMesa->new_state |= FX_NEW_TEXTURING;
@@ -2128,7 +2122,7 @@ void fxDDCompressedTexSubImage2D(GLcontext *ctx, GLenum target,
    }
    else
    {
-      fxTexInvalidate(ctx, texObj, INVALIDATE_DATA);
+   fxTexInvalidate(ctx, texObj, INVALIDATE_DATA);
    }
 }
 
