@@ -383,12 +383,6 @@ static GLint fxChooseBestTMU(fxMesaContext fxMesa, tfxTexInfo *ti)
    if (!fxMesa->haveTwoTMUs || fxMesa->HaveTexUma)
       return FX_TMU0;
 
-   /* TMU Optimizations - Prefer TMU0 for lightmap-like formats to keep stable placement in dual-TMU paths */
-   if (ti->baseLevelInternalFormat == GL_LUMINANCE || ti->baseLevelInternalFormat == GL_INTENSITY)
-   {
-      return FX_TMU0;
-   }
-
    /* If texture is already resident on a single TMU, keep it there */
    if (ti->isInTM && (ti->whichTMU == FX_TMU0 || ti->whichTMU == FX_TMU1))
       return (GLint)ti->whichTMU;
@@ -479,24 +473,22 @@ fxSetupSingleTMU_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj)
       {
          ti->tmu_affinity = targetTMU;
       }
-      if (ti->pin_until_frame < fxMesa->frame_no + 6)
+      if (ti->pin_until_frame < fxMesa->frame_no + 2)
       {
-         ti->pin_until_frame = fxMesa->frame_no + 6;
+         ti->pin_until_frame = fxMesa->frame_no + 2;
       }
    }
 
    if (ti->LODblend && ti->whichTMU == FX_TMU_SPLIT)
    {
-      /* broadcast: program palette on both TMUs explicitly to avoid mismatches */
+      /* broadcast */
       if ((ti->info.format == GR_TEXFMT_P_8) && (!fxMesa->haveGlobalPaletteTexture))
       {
          if (TDFX_DEBUG & VERBOSE_DRIVER)
          {
             fprintf(stderr, "fxSetupSingleTMU_NoLock: uploading texture palette\n");
          }
-         fxMesa->Glide.grTexDownloadTableExt(GR_TMU0, ti->paltype, &(ti->palette));
-         fxMesa->Glide.grTexDownloadTableExt(GR_TMU1, ti->paltype, &(ti->palette));
-         // OLD grTexDownloadTable(ti->paltype, &(ti->palette));
+         grTexDownloadTable(ti->paltype, &(ti->palette));
       }
 
       grTexClampMode(GR_TMU0, ti->sClamp, ti->tClamp);
@@ -932,69 +924,13 @@ fxSetupDoubleTMU_NoLock(fxMesaContext fxMesa,
       goto setup_hardware;
    }
 
-   /* First-time affinity assignment: size-aware and capacity-aware */
+   /* First-time affinity assignment */
    if (ti0->tmu_affinity < 0 && ti1->tmu_affinity < 0)
    {
-      if (!fxMesa->haveTwoTMUs || fxMesa->HaveTexUma)
-      {
-         /* trivial case */
-         ti0->tmu_affinity = 0;
-         ti1->tmu_affinity = 0;
-      }
-      else
-      {
-         /* Estimate sizes and choose placement that fits better */
-         int size0 = (int)grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &(ti0->info));
-         int size1 = (int)grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &(ti1->info));
-         GLuint free0 = fxMesa->freeTexMem[FX_TMU0];
-         GLuint free1 = fxMesa->freeTexMem[FX_TMU1];
-
-         /* Prefer mapping the larger texture to the TMU with more free memory.
-            Use per-frame upload load bytes for tie-breaking. */
-         if (size0 >= size1)
-         {
-            if (free0 >= free1)
-            {
-               ti0->tmu_affinity = FX_TMU0;
-               ti1->tmu_affinity = FX_TMU1;
-            }
-            else
-            {
-               ti0->tmu_affinity = FX_TMU1;
-               ti1->tmu_affinity = FX_TMU0;
-            }
-         }
-         else
-         {
-            if (free1 >= free0)
-            {
-               ti1->tmu_affinity = FX_TMU1;
-               ti0->tmu_affinity = FX_TMU0;
-            }
-            else
-            {
-               ti1->tmu_affinity = FX_TMU0;
-               ti0->tmu_affinity = FX_TMU1;
-            }
-         }
-
-         /* If still ambiguous, use per-frame upload load heuristic */
-         if (ti0->tmu_affinity == ti1->tmu_affinity)
-         {
-            if (fxMesa->stats.bytes_uploaded_tmu[FX_TMU0] <= fxMesa->stats.bytes_uploaded_tmu[FX_TMU1])
-            {
-               ti0->tmu_affinity = FX_TMU0;
-               ti1->tmu_affinity = FX_TMU1;
-            }
-            else
-            {
-               ti0->tmu_affinity = FX_TMU1;
-               ti1->tmu_affinity = FX_TMU0;
-            }
-         }
-      }
-      ti0->pin_until_frame = fxMesa->frame_no + 6;
-      ti1->pin_until_frame = fxMesa->frame_no + 6;
+      ti0->tmu_affinity = 0; /* TMU0 */
+      ti1->tmu_affinity = 1; /* TMU1 */
+      ti0->pin_until_frame = fxMesa->frame_no + 2;
+      ti1->pin_until_frame = fxMesa->frame_no + 2;
    }
 
    /* We shouldn't need to do this. There is something wrong with
