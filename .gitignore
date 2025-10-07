@@ -68,3 +68,6 @@ src/mesa/drivers/glide/fxcrash.c
 src/mesa/drivers/glide/fxcrash.h
 debug_opengl32 - Copy.c
 debug_opengl32.c
+.vs/*
+.vscode
+.vscode/*
