@@ -470,9 +470,6 @@ fxMesaCreateContext(GLuint win,
                         Glide->txMipQuantize &&
                         Glide->txPalToNcc && !getenv("MESA_FX_IGNORE_TEXUS2");
 
-   /* Defaults: keep textures resident on invalidate */
-   fxMesa->keepResidentOnInvalidate = GL_TRUE;
-
    /* Nejc 16bit Textures override from 3dfx tools */
    if (fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_TEXTURES") != NULL)
    {
