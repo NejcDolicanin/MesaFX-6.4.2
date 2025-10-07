@@ -512,7 +512,9 @@ fxSetupSingleTMU_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj)
                   GR_MIPMAPLEVELMASK_EVEN, &(ti->info));
 
       /* Nejc TMU Optimizations - for split LOD blend, ensure separate ST/W per TMU */
-      fxMesa->stw_hint_state |= GR_STWHINT_ST_DIFF_TMU1;
+      fxMesa->stw_hint_state |= (GR_STWHINT_ST_DIFF_TMU1 |
+                                 GR_STWHINT_W_DIFF_TMU0 |
+                                 GR_STWHINT_W_DIFF_TMU1);
       FX_grHints_NoLock(GR_HINT_STWHINT, fxMesa->stw_hint_state);
    }
    else
@@ -675,8 +677,8 @@ fxSetupTextureSingleTMU_NoLock(GLcontext *ctx, GLuint textureset)
    else
       unitsmode = fxGetTexSetConfiguration(ctx, NULL, tObj);
 
-   if (fxMesa->lastUnitsMode == unitsmode)
-      return;
+   /*    if(fxMesa->lastUnitsMode==unitsmode) */
+   /*      return; */
 
    fxMesa->lastUnitsMode = unitsmode;
 
@@ -1226,8 +1228,8 @@ fxSetupTextureDoubleTMU_NoLock(GLcontext *ctx)
 
    unitsmode = fxGetTexSetConfiguration(ctx, tObj0, tObj1);
 
-      if(fxMesa->lastUnitsMode==unitsmode) 
-         return;
+   /*    if(fxMesa->lastUnitsMode==unitsmode) */
+   /*      return; */
 
    fxMesa->lastUnitsMode = unitsmode;
 

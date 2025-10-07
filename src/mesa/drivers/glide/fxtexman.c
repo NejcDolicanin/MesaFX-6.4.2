@@ -374,62 +374,99 @@ fxTMRemoveRange(fxMesaContext fxMesa, GLint tmu, MemRange *range)
 static struct gl_texture_object *
 fxTMFindOldestObject(fxMesaContext fxMesa, int tmu)
 {
+   GLuint age, old, lasttime, bindnumber;
+   GLfloat lowestPriority, anyLowestPriority;
+   struct gl_texture_object *obj, *lowestPriorityObj, *anyObj;
    struct _mesa_HashTable *textures = fxMesa->glCtx->Shared->TexObjects;
-   GLuint id = _mesa_HashFirstEntry(textures);
-   struct gl_texture_object *best = NULL;
-   GLfloat bestPri = 2.0F;
-   GLuint bestAge = 0;
-   GLuint bindnumber = fxMesa->texBindNumber;
+   GLuint id;
 
-   if (!id)
-      return NULL;
+   if (!_mesa_HashFirstEntry(textures))
+      return 0;
 
-   while (id)
+   obj = NULL;
+   old = 0;
+
+   lowestPriorityObj = NULL;
+   lowestPriority = 1.0F;
+   anyObj = NULL;
+   anyLowestPriority = 1.0F;
+
+   bindnumber = fxMesa->texBindNumber;
+   /* TMU Optimizations - avoid evicting too-recently used textures to reduce churn */
+   const GLuint minAge = 5; /* Started with 2 - require at least 5 binds of age before eviction preference */
+
+   for (id = _mesa_HashFirstEntry(textures);
+        id;
+        id = _mesa_HashNextEntry(textures, id))
    {
-      struct gl_texture_object *tmp =
-          (struct gl_texture_object *)_mesa_HashLookup(textures, id);
+      struct gl_texture_object *tmp = (struct gl_texture_object *)_mesa_HashLookup(textures, id);
       tfxTexInfo *info = fxTMGetTexInfo(tmp);
 
       if (info && info->isInTM &&
-          (fxMesa->HaveTexUma ||
-           info->whichTMU == (FxU32)tmu ||
-           info->whichTMU == FX_TMU_BOTH ||
-           info->whichTMU == FX_TMU_SPLIT))
+          ((info->whichTMU == tmu) ||
+           (info->whichTMU == FX_TMU_BOTH) ||
+           (info->whichTMU == FX_TMU_SPLIT) ||
+           fxMesa->HaveTexUma))
       {
+         /* Track a generic lowest-priority candidate as a last resort (even if pinned) */
+         if (tmp->Priority < anyLowestPriority)
+         {
+            anyLowestPriority = tmp->Priority;
+            anyObj = tmp;
+         }
 
-         /* Respect pin window: skip as eviction candidate */
+         /* Respect pin window: skip as eviction candidate this frame */
          if (info->pin_until_frame && info->pin_until_frame > fxMesa->frame_no)
          {
-            id = _mesa_HashNextEntry(textures, id);
             continue;
          }
+         lasttime = info->lastTimeUsed;
 
-         /* Compute age based on bind number, handle wrap */
-         GLuint age;
-         if (info->lastTimeUsed > bindnumber)
-            age = bindnumber + (UINT_MAX - info->lastTimeUsed + 1);
+         if (lasttime > bindnumber)
+            age = bindnumber + (UINT_MAX - lasttime + 1); /* TO DO: check wrap around */
          else
-            age = bindnumber - info->lastTimeUsed;
+            age = bindnumber - lasttime;
 
-         /* Prefer lowest priority, then oldest age */
-         if (tmp->Priority < bestPri ||
-             (tmp->Priority == bestPri && age > bestAge))
+         if (age >= old && age >= minAge)
          {
-            bestPri = tmp->Priority;
-            bestAge = age;
-            best = tmp;
+            old = age;
+            obj = tmp;
+         }
+         else if (!obj && age >= old)
+         {
+            /* no qualified candidate yet; keep best-so-far as weak fallback */
+            old = age;
+            obj = tmp;
+         }
+
+         /* examine priority */
+         if (tmp->Priority < lowestPriority)
+         {
+            lowestPriority = tmp->Priority;
+            lowestPriorityObj = tmp;
          }
       }
-
-      id = _mesa_HashNextEntry(textures, id);
    }
 
-   if ((TDFX_DEBUG & VERBOSE_TEXTURE) && best)
+   if (lowestPriorityObj != NULL)
    {
-      fprintf(stderr, "fxTMFindOldestObject: %d age=%u pri=%f\n",
-              best->Name, bestAge, bestPri);
+      if (TDFX_DEBUG & VERBOSE_TEXTURE)
+      {
+         fprintf(stderr, "fxTMFindOldestObject: %d pri=%f\n", lowestPriorityObj->Name, lowestPriority);
+      }
+      return lowestPriorityObj;
    }
-   return best;
+   else
+   {
+      if (TDFX_DEBUG & VERBOSE_TEXTURE)
+      {
+         if (obj != NULL)
+         {
+            fprintf(stderr, "fxTMFindOldestObject: %d age=%d\n", obj->Name, old);
+         }
+      }
+      return obj ? obj : anyObj;
+   }
 }
 
 static MemRange *
@@ -493,14 +530,13 @@ void fxTMMoveInTM_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj,
 
    /* TMU Optimizations - Replicate small hot textures to BOTH TMUs to avoid swaps on rapid alternation (e.g., muzzle flashes)
     * Only when we have two TMUs and are not in UMA mode.
-    Lightmaps (LUMINANCE/INTENSITY) also qualify but with a tighter threshold.
     */
    if (!fxMesa->HaveTexUma && fxMesa->haveTwoTMUs)
    {
       int szBoth = (int)grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &(ti->info));
-      int threshold = (ti->baseLevelInternalFormat == GL_LUMINANCE ||
-                       ti->baseLevelInternalFormat == GL_INTENSITY) ? (8 * 1024) : (16 * 1024);
-      if (szBoth <= threshold) {
+      /* Heuristic limit: 64KB total for full mip chain */
+      if (szBoth <= (64 * 1024))
+      {
          where = FX_TMU_BOTH;
          ti->whichTMU = FX_TMU_BOTH;
       }
@@ -743,7 +779,31 @@ void fxTMReloadSubMipMapLevel(fxMesaContext fxMesa,
       exit(-1);
    }
 
-   /* Ensure residency only if needed */
+   /* NEJC SOF: Coalesce subimage updates - accumulate dirty rects for potential coalescing */
+   if (!ti->has_dirty_subimage)
+   {
+      ti->has_dirty_subimage = GL_TRUE;
+      ti->dirty_minY = yoffset;
+      ti->dirty_maxY = yoffset + height - 1;
+      ti->dirty_level_min = level;
+      ti->dirty_level_max = level;
+   }
+   else
+   {
+      /* Expand the dirty rectangle and level range */
+      if (yoffset < ti->dirty_minY)
+         ti->dirty_minY = yoffset;
+      if (yoffset + height - 1 > ti->dirty_maxY)
+         ti->dirty_maxY = yoffset + height - 1;
+      if (level < ti->dirty_level_min)
+         ti->dirty_level_min = level;
+      if (level > ti->dirty_level_max)
+         ti->dirty_level_max = level;
+   }
+
+   /* Defer actual upload to SwapBuffers flush to avoid mid-frame stalls that cause stutter.
+    * We still ensure the texture resides in TMU memory so flush can reference it.
+    */
    tmu = (int)ti->whichTMU;
    if (!ti->isInTM || ti->tm[tmu] == NULL)
    {
@@ -780,7 +840,7 @@ void fxTMReloadSubMipMapLevel(fxMesaContext fxMesa,
    case FX_TMU1:
       grTexDownloadMipMapLevelPartial(tmu,
                                       ti->tm[tmu]->startAddr,
-                                      lodlevel,
+                                      FX_valueToLod(FX_lodToValue(lodlevel) + level),
                                       FX_largeLodLog2(ti->info),
                                       FX_aspectRatioLog2(ti->info),
                                       ti->info.format,
@@ -792,7 +852,7 @@ void fxTMReloadSubMipMapLevel(fxMesaContext fxMesa,
    case FX_TMU_SPLIT:
       grTexDownloadMipMapLevelPartial(GR_TMU0,
                                       ti->tm[FX_TMU0]->startAddr,
-                                      lodlevel,
+                                      FX_valueToLod(FX_lodToValue(lodlevel) + level),
                                       FX_largeLodLog2(ti->info),
                                       FX_aspectRatioLog2(ti->info),
                                       ti->info.format,
@@ -801,7 +861,7 @@ void fxTMReloadSubMipMapLevel(fxMesaContext fxMesa,
 
       grTexDownloadMipMapLevelPartial(GR_TMU1,
                                       ti->tm[FX_TMU1]->startAddr,
-                                      lodlevel,
+                                      FX_valueToLod(FX_lodToValue(lodlevel) + level),
                                       FX_largeLodLog2(ti->info),
                                       FX_aspectRatioLog2(ti->info),
                                       ti->info.format,
@@ -813,7 +873,7 @@ void fxTMReloadSubMipMapLevel(fxMesaContext fxMesa,
    case FX_TMU_BOTH:
       grTexDownloadMipMapLevelPartial(GR_TMU0,
                                       ti->tm[FX_TMU0]->startAddr,
-                                      lodlevel,
+                                      FX_valueToLod(FX_lodToValue(lodlevel) + level),
                                       FX_largeLodLog2(ti->info),
                                       FX_aspectRatioLog2(ti->info),
                                       ti->info.format,
@@ -822,7 +882,7 @@ void fxTMReloadSubMipMapLevel(fxMesaContext fxMesa,
 
       grTexDownloadMipMapLevelPartial(GR_TMU1,
                                       ti->tm[FX_TMU1]->startAddr,
-                                      lodlevel,
+                                      FX_valueToLod(FX_lodToValue(lodlevel) + level),
                                       FX_largeLodLog2(ti->info),
                                       FX_aspectRatioLog2(ti->info),
                                       ti->info.format,
@@ -947,209 +1007,209 @@ void fxTMClose(fxMesaContext fxMesa)
    }
 }
 
-/* Batch subuploads disabled */
+/* Nejc TMU Optimizations - Flush coalesced subimage updates in batch.
+ * Walk all textures and upload pending dirty regions (levels [dirty_level_min..dirty_level_max],
+ * rows [dirty_minY..dirty_maxY]). This is a conservative flush intended to reduce redundant
+ * partial uploads within a frame while preserving correctness.
+ */
 void fxTMFlushPendingSubUploads_NoLock(fxMesaContext ctx)
 {
-   (void)ctx;
+   int budget = 64 * 1024; /* cap partial upload traffic per frame to reduce stutter */
+   struct _mesa_HashTable *textures = ctx->glCtx->Shared->TexObjects;
+   GLuint id;
 
-   // int budget = 64 * 1024; /* cap partial upload traffic per frame to reduce stutter */
-   // struct _mesa_HashTable *textures = ctx->glCtx->Shared->TexObjects;
-   // GLuint id;
+   for (id = _mesa_HashFirstEntry(textures);
+        id;
+        id = _mesa_HashNextEntry(textures, id))
+   {
+      struct gl_texture_object *tObj =
+          (struct gl_texture_object *)_mesa_HashLookup(textures, id);
+      tfxTexInfo *ti = fxTMGetTexInfo(tObj);
 
-   // for (id = _mesa_HashFirstEntry(textures);
-   //      id;
-   //      id = _mesa_HashNextEntry(textures, id))
-   // {
-   //    struct gl_texture_object *tObj =
-   //        (struct gl_texture_object *)_mesa_HashLookup(textures, id);
-   //    tfxTexInfo *ti = fxTMGetTexInfo(tObj);
+      if (!ti || !ti->has_dirty_subimage || !ti->isInTM)
+         continue;
 
-   //    if (!ti || !ti->has_dirty_subimage || !ti->isInTM)
-   //       continue;
+      /* Determine level interval to flush */
+      GLint lmin = (ti->dirty_level_min >= 0) ? ti->dirty_level_min : ti->minLevel;
+      GLint lmax = (ti->dirty_level_max >= 0) ? ti->dirty_level_max : lmin;
 
-   //    /* Determine level interval to flush */
-   //    GLint lmin = (ti->dirty_level_min >= 0) ? ti->dirty_level_min : ti->minLevel;
-   //    GLint lmax = (ti->dirty_level_max >= 0) ? ti->dirty_level_max : lmin;
+      /* Resolve target TMU configuration once */
+      GLint tmu = (GLint)ti->whichTMU;
 
-   //    /* Resolve target TMU configuration once */
-   //    GLint tmu = (GLint)ti->whichTMU;
+      for (GLint level = lmin; level <= lmax; ++level)
+      {
+         struct gl_texture_image *texImage = tObj->Image[0][level];
+         if (!texImage)
+            continue;
 
-   //    for (GLint level = lmin; level <= lmax; ++level)
-   //    {
-   //       struct gl_texture_image *texImage = tObj->Image[0][level];
-   //       if (!texImage)
-   //          continue;
+         tfxMipMapLevel *mml = FX_MIPMAP_DATA(texImage);
+         if (!mml || mml->width <= 0 || mml->height <= 0)
+            continue;
 
-   //       tfxMipMapLevel *mml = FX_MIPMAP_DATA(texImage);
-   //       if (!mml || mml->width <= 0 || mml->height <= 0)
-   //          continue;
+         /* Compute lodlevel for this level */
+         GrLOD_t lodlevel = ti->info.largeLodLog2 - (level - ti->minLevel);
 
-   //       /* Compute lodlevel for this level */
-   //       GrLOD_t lodlevel = ti->info.largeLodLog2 - (level - ti->minLevel);
+         /* Clamp dirty Y range to this level's height */
+         GLint y0 = CLAMP(ti->dirty_minY, 0, mml->height - 1);
+         GLint y1 = CLAMP(ti->dirty_maxY, y0, mml->height - 1);
 
-   //       /* Clamp dirty Y range to this level's height */
-   //       GLint y0 = CLAMP(ti->dirty_minY, 0, mml->height - 1);
-   //       GLint y1 = CLAMP(ti->dirty_maxY, y0, mml->height - 1);
+         /* Provide pointer to first texel of the start row y0 */
+         void *data;
+         {
+            const GLboolean is8 = (ti->info.format == GR_TEXFMT_INTENSITY_8) ||
+                                  (ti->info.format == GR_TEXFMT_P_8) ||
+                                  (ti->info.format == GR_TEXFMT_ALPHA_8);
+            const int bpp = is8 ? 1 : 2;
+            data = (void *)((GLubyte *)texImage->Data + y0 * mml->width * bpp);
+         }
 
-   //       /* Provide pointer to first texel of the start row y0 */
-   //       void *data;
-   //       {
-   //          const GLboolean is8 = (ti->info.format == GR_TEXFMT_INTENSITY_8) ||
-   //                                (ti->info.format == GR_TEXFMT_P_8) ||
-   //                                (ti->info.format == GR_TEXFMT_ALPHA_8);
-   //          const int bpp = is8 ? 1 : 2;
-   //          data = (void *)((GLubyte *)texImage->Data + y0 * mml->width * bpp);
-   //       }
+         /* Issue partial uploads according to residency */
+         /* Compute how many rows we can upload within this frame's budget */
+         int bpp = ((ti->info.format == GR_TEXFMT_INTENSITY_8) ||
+                    (ti->info.format == GR_TEXFMT_P_8) ||
+                    (ti->info.format == GR_TEXFMT_ALPHA_8))
+                       ? 1
+                       : 2;
+         int rows_fit = (budget > 0) ? budget / (mml->width * bpp) : 0;
+         if (rows_fit <= 0)
+            rows_fit = 1;
+         if (rows_fit > (y1 - y0 + 1))
+            rows_fit = (y1 - y0 + 1);
+         int y1_eff = y0 + rows_fit - 1;
 
-   //       /* Issue partial uploads according to residency */
-   //       /* Compute how many rows we can upload within this frame's budget */
-   //       int bpp = ((ti->info.format == GR_TEXFMT_INTENSITY_8) ||
-   //                  (ti->info.format == GR_TEXFMT_P_8) ||
-   //                  (ti->info.format == GR_TEXFMT_ALPHA_8))
-   //                     ? 1
-   //                     : 2;
-   //       int rows_fit = (budget > 0) ? budget / (mml->width * bpp) : 0;
-   //       if (rows_fit <= 0)
-   //          rows_fit = 1;
-   //       if (rows_fit > (y1 - y0 + 1))
-   //          rows_fit = (y1 - y0 + 1);
-   //       int y1_eff = y0 + rows_fit - 1;
+         /* Issue partial uploads according to residency */
+         switch (tmu)
+         {
+         case FX_TMU0:
+         case FX_TMU1:
+            grTexDownloadMipMapLevelPartial(tmu,
+                                            ti->tm[tmu]->startAddr,
+                                            lodlevel,
+                                            FX_largeLodLog2(ti->info),
+                                            FX_aspectRatioLog2(ti->info),
+                                            ti->info.format,
+                                            GR_MIPMAPLEVELMASK_BOTH,
+                                            data,
+                                            y0, y1_eff);
+            ctx->stats.subuploads_per_frame++;
+            /* budget accounting and early exit if we hit the cap */
+            budget -= rows_fit * mml->width * bpp;
+            if (budget <= 0 && (y1_eff < y1 || level < lmax))
+            {
+               ti->has_dirty_subimage = GL_TRUE;
+               ti->dirty_minY = y1_eff + 1;
+               ti->dirty_level_min = level;
+               return;
+            }
+            ti->upload_stamp[tmu] = ctx->frame_no;
+            break;
 
-   //       /* Issue partial uploads according to residency */
-   //       switch (tmu)
-   //       {
-   //       case FX_TMU0:
-   //       case FX_TMU1:
-   //          grTexDownloadMipMapLevelPartial(tmu,
-   //                                          ti->tm[tmu]->startAddr,
-   //                                          lodlevel,
-   //                                          FX_largeLodLog2(ti->info),
-   //                                          FX_aspectRatioLog2(ti->info),
-   //                                          ti->info.format,
-   //                                          GR_MIPMAPLEVELMASK_BOTH,
-   //                                          data,
-   //                                          y0, y1_eff);
-   //          ctx->stats.subuploads_per_frame++;
-   //          /* budget accounting and early exit if we hit the cap */
-   //          budget -= rows_fit * mml->width * bpp;
-   //          if (budget <= 0 && (y1_eff < y1 || level < lmax))
-   //          {
-   //             ti->has_dirty_subimage = GL_TRUE;
-   //             ti->dirty_minY = y1_eff + 1;
-   //             ti->dirty_level_min = level;
-   //             return;
-   //          }
-   //          ti->upload_stamp[tmu] = ctx->frame_no;
-   //          break;
+         case FX_TMU_SPLIT:
+            grTexDownloadMipMapLevelPartial(GR_TMU0,
+                                            ti->tm[FX_TMU0]->startAddr,
+                                            lodlevel,
+                                            FX_largeLodLog2(ti->info),
+                                            FX_aspectRatioLog2(ti->info),
+                                            ti->info.format,
+                                            GR_MIPMAPLEVELMASK_ODD,
+                                            data,
+                                            y0, y1_eff);
+            grTexDownloadMipMapLevelPartial(GR_TMU1,
+                                            ti->tm[FX_TMU1]->startAddr,
+                                            lodlevel,
+                                            FX_largeLodLog2(ti->info),
+                                            FX_aspectRatioLog2(ti->info),
+                                            ti->info.format,
+                                            GR_MIPMAPLEVELMASK_EVEN,
+                                            data,
+                                            y0, y1_eff);
+            ctx->stats.subuploads_per_frame += 2;
+            /* budget accounting and early exit if we hit the cap */
+            budget -= 2 * rows_fit * mml->width * bpp;
+            if (budget <= 0 && (y1_eff < y1 || level < lmax))
+            {
+               ti->has_dirty_subimage = GL_TRUE;
+               ti->dirty_minY = y1_eff + 1;
+               ti->dirty_level_min = level;
+               return;
+            }
+            ti->upload_stamp[FX_TMU0] = ctx->frame_no;
+            ti->upload_stamp[FX_TMU1] = ctx->frame_no;
+            break;
 
-   //       case FX_TMU_SPLIT:
-   //          grTexDownloadMipMapLevelPartial(GR_TMU0,
-   //                                          ti->tm[FX_TMU0]->startAddr,
-   //                                          lodlevel,
-   //                                          FX_largeLodLog2(ti->info),
-   //                                          FX_aspectRatioLog2(ti->info),
-   //                                          ti->info.format,
-   //                                          GR_MIPMAPLEVELMASK_ODD,
-   //                                          data,
-   //                                          y0, y1_eff);
-   //          grTexDownloadMipMapLevelPartial(GR_TMU1,
-   //                                          ti->tm[FX_TMU1]->startAddr,
-   //                                          lodlevel,
-   //                                          FX_largeLodLog2(ti->info),
-   //                                          FX_aspectRatioLog2(ti->info),
-   //                                          ti->info.format,
-   //                                          GR_MIPMAPLEVELMASK_EVEN,
-   //                                          data,
-   //                                          y0, y1_eff);
-   //          ctx->stats.subuploads_per_frame += 2;
-   //          /* budget accounting and early exit if we hit the cap */
-   //          budget -= 2 * rows_fit * mml->width * bpp;
-   //          if (budget <= 0 && (y1_eff < y1 || level < lmax))
-   //          {
-   //             ti->has_dirty_subimage = GL_TRUE;
-   //             ti->dirty_minY = y1_eff + 1;
-   //             ti->dirty_level_min = level;
-   //             return;
-   //          }
-   //          ti->upload_stamp[FX_TMU0] = ctx->frame_no;
-   //          ti->upload_stamp[FX_TMU1] = ctx->frame_no;
-   //          break;
+         case FX_TMU_BOTH:
+            grTexDownloadMipMapLevelPartial(GR_TMU0,
+                                            ti->tm[FX_TMU0]->startAddr,
+                                            lodlevel,
+                                            FX_largeLodLog2(ti->info),
+                                            FX_aspectRatioLog2(ti->info),
+                                            ti->info.format,
+                                            GR_MIPMAPLEVELMASK_BOTH,
+                                            data,
+                                            y0, y1_eff);
+            grTexDownloadMipMapLevelPartial(GR_TMU1,
+                                            ti->tm[FX_TMU1]->startAddr,
+                                            lodlevel,
+                                            FX_largeLodLog2(ti->info),
+                                            FX_aspectRatioLog2(ti->info),
+                                            ti->info.format,
+                                            GR_MIPMAPLEVELMASK_BOTH,
+                                            data,
+                                            y0, y1_eff);
+            ctx->stats.subuploads_per_frame += 2;
+            /* budget accounting and early exit if we hit the cap */
+            budget -= 2 * rows_fit * mml->width * bpp;
+            if (budget <= 0 && (y1_eff < y1 || level < lmax))
+            {
+               ti->has_dirty_subimage = GL_TRUE;
+               ti->dirty_minY = y1_eff + 1;
+               ti->dirty_level_min = level;
+               return;
+            }
+            ti->upload_stamp[FX_TMU0] = ctx->frame_no;
+            ti->upload_stamp[FX_TMU1] = ctx->frame_no;
+            break;
 
-   //       case FX_TMU_BOTH:
-   //          grTexDownloadMipMapLevelPartial(GR_TMU0,
-   //                                          ti->tm[FX_TMU0]->startAddr,
-   //                                          lodlevel,
-   //                                          FX_largeLodLog2(ti->info),
-   //                                          FX_aspectRatioLog2(ti->info),
-   //                                          ti->info.format,
-   //                                          GR_MIPMAPLEVELMASK_BOTH,
-   //                                          data,
-   //                                          y0, y1_eff);
-   //          grTexDownloadMipMapLevelPartial(GR_TMU1,
-   //                                          ti->tm[FX_TMU1]->startAddr,
-   //                                          lodlevel,
-   //                                          FX_largeLodLog2(ti->info),
-   //                                          FX_aspectRatioLog2(ti->info),
-   //                                          ti->info.format,
-   //                                          GR_MIPMAPLEVELMASK_BOTH,
-   //                                          data,
-   //                                          y0, y1_eff);
-   //          ctx->stats.subuploads_per_frame += 2;
-   //          /* budget accounting and early exit if we hit the cap */
-   //          budget -= 2 * rows_fit * mml->width * bpp;
-   //          if (budget <= 0 && (y1_eff < y1 || level < lmax))
-   //          {
-   //             ti->has_dirty_subimage = GL_TRUE;
-   //             ti->dirty_minY = y1_eff + 1;
-   //             ti->dirty_level_min = level;
-   //             return;
-   //          }
-   //          ti->upload_stamp[FX_TMU0] = ctx->frame_no;
-   //          ti->upload_stamp[FX_TMU1] = ctx->frame_no;
-   //          break;
+         default:
+            /* do nothing */
+            break;
+         }
+      }
 
-   //       default:
-   //          /* do nothing */
-   //          break;
-   //       }
-   //    }
-
-   //    /* Clear dirty markers after flush */
-   //    ti->has_dirty_subimage = GL_FALSE;
-   //    ti->dirty_minY = ti->dirty_maxY = -1;
-   //    ti->dirty_level_min = ti->dirty_level_max = -1;
-   // }
+      /* Clear dirty markers after flush */
+      ti->has_dirty_subimage = GL_FALSE;
+      ti->dirty_minY = ti->dirty_maxY = -1;
+      ti->dirty_level_min = ti->dirty_level_max = -1;
+   }
 }
 
 void fxTMRestoreTextures_NoLock(fxMesaContext ctx)
 {
-   (void)ctx;
+   struct _mesa_HashTable *textures = ctx->glCtx->Shared->TexObjects;
+   GLuint id;
 
-   // struct _mesa_HashTable *textures = ctx->glCtx->Shared->TexObjects;
-   // GLuint id;
-
-   // for (id = _mesa_HashFirstEntry(textures);
-   //      id;
-   //      id = _mesa_HashNextEntry(textures, id))
-   // {
-   //    struct gl_texture_object *tObj = (struct gl_texture_object *)_mesa_HashLookup(textures, id);
-   //    tfxTexInfo *ti = fxTMGetTexInfo(tObj);
-   //    if (ti && ti->isInTM)
-   //    {
-   //       int i;
-   //       for (i = 0; i < MAX_TEXTURE_UNITS; i++)
-   //       {
-   //          if (ctx->glCtx->Texture.Unit[i]._Current == tObj)
-   //          {
-   //             /* Force the texture onto the board, as it could be in use */
-   //             int where = ti->whichTMU;
-   //             fxTMMoveOutTM_NoLock(ctx, tObj);
-   //             fxTMMoveInTM_NoLock(ctx, tObj, where);
-   //             break;
-   //          }
-   //       }
-   //       if (i == MAX_TEXTURE_UNITS) /* Mark the texture as off the board */
-   //          fxTMMoveOutTM_NoLock(ctx, tObj);
-   //    }
-   // }
+   for (id = _mesa_HashFirstEntry(textures);
+        id;
+        id = _mesa_HashNextEntry(textures, id))
+   {
+      struct gl_texture_object *tObj = (struct gl_texture_object *)_mesa_HashLookup(textures, id);
+      tfxTexInfo *ti = fxTMGetTexInfo(tObj);
+      if (ti && ti->isInTM)
+      {
+         int i;
+         for (i = 0; i < MAX_TEXTURE_UNITS; i++)
+         {
+            if (ctx->glCtx->Texture.Unit[i]._Current == tObj)
+            {
+               /* Force the texture onto the board, as it could be in use */
+               int where = ti->whichTMU;
+               fxTMMoveOutTM_NoLock(ctx, tObj);
+               fxTMMoveInTM_NoLock(ctx, tObj, where);
+               break;
+            }
+         }
+         if (i == MAX_TEXTURE_UNITS) /* Mark the texture as off the board */
+            fxTMMoveOutTM_NoLock(ctx, tObj);
+      }
+   }
 }

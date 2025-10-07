@@ -885,8 +885,8 @@ fxSetupTextureSingleTMUNapalm_NoLock(GLcontext *ctx, GLuint textureset)
    else
       unitsmode = fxGetTexSetConfiguration(ctx, NULL, tObj);
 
-   if (fxMesa->lastUnitsMode == unitsmode)
-      return;
+   /*    if(fxMesa->lastUnitsMode==unitsmode) */
+   /*      return; */
 
    fxMesa->lastUnitsMode = unitsmode;
 
@@ -931,8 +931,8 @@ fxSetupTextureDoubleTMUNapalm_NoLock(GLcontext *ctx)
 
    unitsmode = fxGetTexSetConfiguration(ctx, tObj0, tObj1);
 
-   if (fxMesa->lastUnitsMode == unitsmode)
-      return;
+   /*    if(fxMesa->lastUnitsMode==unitsmode) */
+   /*      return; */
 
    fxMesa->lastUnitsMode = unitsmode;
 
