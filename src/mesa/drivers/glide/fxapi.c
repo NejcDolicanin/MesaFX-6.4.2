@@ -1118,6 +1118,9 @@ fxMesaSwapBuffers(void)
 
          fxMesaCurrentCtx->stats.swapBuffer++;
       }
+
+      /* Increment frame counter */
+      fxMesaCurrentCtx->frame_no++;
    }
 }
 

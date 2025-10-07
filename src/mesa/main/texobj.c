@@ -619,9 +619,9 @@ _mesa_GenTextures(GLsizei n, GLuint *textures)
       /* find a free ID */
       name = _mesa_HashFindFreeKeyBlock(ctx->Shared->TexObjects, 1);
 
-      /* NEJC SOF FIX: delay reuse by bumping IDs into a higher range */
+      /* NEJC SOF temp FIX: delay reuse by bumping IDs into a higher range */
       if (name > 0) {
-         name += 64;  /* safe margin before reuse */
+         name += 128;  /* safe margin before reuse */
       }
 
       if (!texObj)

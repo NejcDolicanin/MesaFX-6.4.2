@@ -550,6 +550,9 @@ struct tfxMesaContext
 
    /* NEJC SOF: Frame counter and TMU state cache */
    GLuint frame_no;     /* increment once per SwapBuffers */
+
+   /* Deferred texture deletion */
+   tfxDeferredDelete *deferredDeletes;
 };
 
 extern void fxSetupFXUnits(GLcontext *);
