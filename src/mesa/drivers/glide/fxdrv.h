@@ -111,14 +111,6 @@
 #define FX_TMU_BOTH 99
 #define FX_TMU_NONE 100
 
-/* Nejc... Texture invalidation reasons */
-typedef enum {
-   INVALIDATE_NONE = 0,
-    INVALIDATE_PARAMS = 1,    // Base/max level, min filter
-    INVALIDATE_PALETTE = 2,   // Palette changes
-    INVALIDATE_DATA = 4       // New texture data
-} tfxInvalidateReason;
-
 /* Used for fxMesa->lastUnitsMode */
 
 #define FX_UM_NONE 0x00000000
