@@ -206,15 +206,26 @@ void fxPrintTextureData(tfxTexInfo *ti)
 /************************************************************************/
 
 static void
-fxTexInvalidate(GLcontext *ctx, struct gl_texture_object *tObj)
+fxTexInvalidate(GLcontext *ctx, struct gl_texture_object *tObj, tfxInvalidateReason reason)
 {
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    tfxTexInfo *ti;
 
    ti = fxTMGetTexInfo(tObj);
-   if (ti->isInTM)
-      fxTMMoveOutTM(fxMesa, tObj); /* TO DO: SLOW but easy to write */
 
+   /* OLD WAY */
+   // if (ti->isInTM)
+   //    fxTMMoveOutTM(fxMesa, tObj); /* TO DO: SLOW but easy to write */
+
+   if (!fxMesa->keepResidentOnInvalidate || (reason & (INVALIDATE_PARAMS | INVALIDATE_PALETTE | INVALIDATE_DATA)))
+   {
+      if (ti->isInTM)
+      {
+         fxTMMoveOutTM(fxMesa, tObj);
+      }
+   }
+
+   /* Mark for revalidation; fxSetup path will reload or reallocate as needed */
    ti->validated = GL_FALSE;
    fxMesa->new_state |= FX_NEW_TEXTURING;
 }
@@ -311,6 +322,7 @@ void fxDDTexEnv(GLcontext *ctx, GLenum target, GLenum pname,
    fxMesa->new_state |= FX_NEW_TEXTURING;
 }
 
+/* Texture filtering mode also here */
 void fxDDTexParam(GLcontext *ctx, GLenum target, struct gl_texture_object *tObj,
                   GLenum pname, const GLfloat *params)
 {
@@ -405,7 +417,7 @@ void fxDDTexParam(GLcontext *ctx, GLenum target, struct gl_texture_object *tObj,
       default:
          break;
       }
-      fxTexInvalidate(ctx, tObj);
+      fxTexInvalidate(ctx, tObj, INVALIDATE_NONE);
       break;
 
    case GL_TEXTURE_MAG_FILTER:
@@ -474,10 +486,10 @@ void fxDDTexParam(GLcontext *ctx, GLenum target, struct gl_texture_object *tObj,
       /* TO DO */
       break;
    case GL_TEXTURE_BASE_LEVEL:
-      fxTexInvalidate(ctx, tObj);
+      fxTexInvalidate(ctx, tObj, INVALIDATE_PARAMS);
       break;
    case GL_TEXTURE_MAX_LEVEL:
-      fxTexInvalidate(ctx, tObj);
+      fxTexInvalidate(ctx, tObj, INVALIDATE_PARAMS);
       break;
 
    default:
@@ -701,7 +713,7 @@ void fxDDTexPalette(GLcontext *ctx, struct gl_texture_object *tObj)
          tObj->DriverData = fxAllocTexObjData(fxMesa);
       ti = fxTMGetTexInfo(tObj);
       ti->paltype = convertPalette(fxMesa, ti->palette.data, &tObj->Palette);
-      fxTexInvalidate(ctx, tObj);
+      fxTexInvalidate(ctx, tObj, INVALIDATE_DATA);
    }
    else
    {
@@ -1682,7 +1694,7 @@ void fxDDTexImage2D(GLcontext *ctx, GLenum target, GLint level,
    ti->info.format = mml->glideFormat;
    texImage->FetchTexelc = fxFetchFunction(texImage->TexFormat->MesaFormat);
 
-   fxTexInvalidate(ctx, texObj);
+   fxTexInvalidate(ctx, texObj, INVALIDATE_DATA);
 }
 
 void fxDDTexSubImage2D(GLcontext *ctx, GLenum target, GLint level,
@@ -1809,7 +1821,7 @@ void fxDDTexSubImage2D(GLcontext *ctx, GLenum target, GLint level,
    }
    else
    {
-      fxTexInvalidate(ctx, texObj);
+      fxTexInvalidate(ctx, texObj, INVALIDATE_NONE);
    }
 }
 
@@ -1937,7 +1949,7 @@ void fxDDCompressedTexImage2D(GLcontext *ctx, GLenum target,
       assert(!texImage->IsCompressed);
    }
 
-   fxTexInvalidate(ctx, texObj);
+   fxTexInvalidate(ctx, texObj, INVALIDATE_DATA);
 }
 
 void fxDDCompressedTexSubImage2D(GLcontext *ctx, GLenum target,
@@ -2010,7 +2022,7 @@ void fxDDCompressedTexSubImage2D(GLcontext *ctx, GLenum target,
    }
    else
    {
-      fxTexInvalidate(ctx, texObj);
+      fxTexInvalidate(ctx, texObj, INVALIDATE_DATA);
    }
 }
 

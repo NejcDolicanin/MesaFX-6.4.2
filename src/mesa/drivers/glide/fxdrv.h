@@ -255,6 +255,15 @@ typedef struct
    GrTextureFormat_t glideFormat; /* Glide image format */
 } tfxMipMapLevel;
 
+/* Texture invalidation reasons, for TMU management */
+typedef enum
+{
+   INVALIDATE_NONE = 0,
+   INVALIDATE_PARAMS = 1,  // Base/max level, min filter
+   INVALIDATE_PALETTE = 2, // Palette changes
+   INVALIDATE_DATA = 4     // New texture data
+} tfxInvalidateReason;
+
 /*
  * TDFX-specific texture object data.  This hangs off of the
  * struct gl_texture_object DriverData pointer.
@@ -498,6 +507,7 @@ struct tfxMesaContext
    GLboolean haveZBuffer;
    GLboolean haveDoubleBuffer;
    GLboolean haveGlobalPaletteTexture;
+   GLboolean keepResidentOnInvalidate;  /* Keep textures resident on fxTexInvalidate (avoid evict+reupload on param changes) */
    GLint swapInterval;
    GLint maxPendingSwapBuffers;
 
@@ -786,8 +796,8 @@ extern int TDFX_DEBUG;
 #endif
 
 /* dirty hacks */
-#define FX_RESCALE_BIG_TEXURES_HACK 0 /* fake textures larger than HW can support */
+#define FX_RESCALE_BIG_TEXURES_HACK 0   /* fake textures larger than HW can support */
 #define FX_COMPRESS_S3TC_AS_FXT1_HACK 1 /* map S3TC to FXT1 */
-#define FX_TC_NAPALM 1 /* map GL_COMPRESSED_RGB[A] to FXT1. Works with VSA100-based cards only. */
+#define FX_TC_NAPALM 1                  /* map GL_COMPRESSED_RGB[A] to FXT1. Works with VSA100-based cards only. */
 
 #endif

@@ -466,9 +466,10 @@ fxMesaCreateContext(GLuint win,
    fxMesa->HaveTexUma = voodoo->HaveTexUma && !getenv("MESA_FX_IGNORE_TEXUMA");
    fxMesa->Glide = glbHWConfig.Glide;
    Glide = &fxMesa->Glide;
-   fxMesa->HaveTexus2 = Glide->txImgQuantize &&
-                        Glide->txMipQuantize &&
-                        Glide->txPalToNcc && !getenv("MESA_FX_IGNORE_TEXUS2");
+   fxMesa->HaveTexus2 = Glide->txImgQuantize && Glide->txMipQuantize && Glide->txPalToNcc && !getenv("MESA_FX_IGNORE_TEXUS2");
+
+   /* Defaults enabled: keep textures resident on invalidate */
+   fxMesa->keepResidentOnInvalidate = GL_TRUE;
 
    /* Nejc 16bit Textures override from 3dfx tools */
    if (fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_TEXTURES") != NULL)
