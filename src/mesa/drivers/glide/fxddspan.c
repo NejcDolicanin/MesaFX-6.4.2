@@ -282,11 +282,12 @@
 
 #define READ_DEPTH(d, _x, _y) \
 	d = (*(GLuint *)(buf + _x * BYTESPERPIXEL + _y * pitch)) & 0xffffff
-
+	
 /* Nejc - New renderbuffer stuff */
 #define FLUSH_BATCH(fxMesa)
 #define LOCK_HARDWARE(fxMesa)
 #define UNLOCK_HARDWARE(fxMesa)
+
 
 /**********************************************************************/
 /*                    Locking for swrast                              */
@@ -304,6 +305,7 @@ void fxSpanRenderFinish(GLcontext *ctx)
 	_swrast_flush(ctx);
 	UNLOCK_HARDWARE(fxMesa);
 }
+
 
 /* Set the buffer used for reading */
 static void fxDDSetBuffer(GLcontext *ctx, GLframebuffer *buffer, GLuint bufferBit)
