@@ -234,8 +234,7 @@ fxTMFindStartAddr(fxMesaContext fxMesa, GLint tmu, int size)
          if (tmp->endAddr - tmp->startAddr >= size)
          { /* Fits here */
             result = tmp->startAddr;
-            result = (result + 31) & ~31;   /* 32-byte alignment */
-            tmp->startAddr = result + size; /* Unused padding space (alignment gap) is naturally consumed, not lost */
+            tmp->startAddr += size;
             if (tmp->startAddr == tmp->endAddr)
             { /* Empty */
                if (prev)
@@ -504,18 +503,12 @@ void fxTMMoveInTM_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj,
 
    ti->whichTMU = (FxU32)where;
 
-   /* NEJC SOF: UMA / pool selection sanity - lock pool choice on first residency */
-   if (ti->pool < 0)
-   {
-      ti->pool = (fxMesa->HaveTexUma ? 0 : where);
-   }
-
    switch (where)
    {
    case FX_TMU0:
    case FX_TMU1:
       texmemsize = (int)grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &(ti->info));
-      ti->tm[where] = fxTMAddObj(fxMesa, tObj, ti->pool, texmemsize);
+      ti->tm[where] = fxTMAddObj(fxMesa, tObj, where, texmemsize);
       fxMesa->stats.memTexUpload += texmemsize;
 
       for (i = FX_largeLodValue(ti->info), l = ti->minLevel;
@@ -530,8 +523,6 @@ void fxTMMoveInTM_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj,
                                   ti->info.format,
                                   GR_MIPMAPLEVELMASK_BOTH,
                                   texImage->Data);
-
-         fxMesa->stats.uploads_per_frame++;
       }
       break;
    case FX_TMU_SPLIT:
@@ -565,8 +556,6 @@ void fxTMMoveInTM_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj,
                                   ti->info.format,
                                   GR_MIPMAPLEVELMASK_EVEN,
                                   texImage->Data);
-
-         fxMesa->stats.uploads_per_frame += 2;
       }
       break;
    case FX_TMU_BOTH:
@@ -599,8 +588,6 @@ void fxTMMoveInTM_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj,
                                   ti->info.format,
                                   GR_MIPMAPLEVELMASK_BOTH,
                                   texImage->Data);
-
-         fxMesa->stats.uploads_per_frame += 2;
       }
       break;
    default:
@@ -667,8 +654,6 @@ void fxTMReloadMipMapLevel(fxMesaContext fxMesa, struct gl_texture_object *tObj,
                                FX_aspectRatioLog2(ti->info),
                                ti->info.format,
                                GR_MIPMAPLEVELMASK_BOTH, texImage->Data);
-
-      fxMesa->stats.uploads_per_frame++;
       break;
    case FX_TMU_SPLIT:
       grTexDownloadMipMapLevel(GR_TMU0,
@@ -686,8 +671,6 @@ void fxTMReloadMipMapLevel(fxMesaContext fxMesa, struct gl_texture_object *tObj,
                                FX_aspectRatioLog2(ti->info),
                                ti->info.format,
                                GR_MIPMAPLEVELMASK_EVEN, texImage->Data);
-
-      fxMesa->stats.uploads_per_frame += 2;
       break;
    case FX_TMU_BOTH:
       grTexDownloadMipMapLevel(GR_TMU0,
@@ -705,8 +688,6 @@ void fxTMReloadMipMapLevel(fxMesaContext fxMesa, struct gl_texture_object *tObj,
                                FX_aspectRatioLog2(ti->info),
                                ti->info.format,
                                GR_MIPMAPLEVELMASK_BOTH, texImage->Data);
-
-      fxMesa->stats.uploads_per_frame += 2;
       break;
 
    default:
@@ -736,22 +717,6 @@ void fxTMReloadSubMipMapLevel(fxMesaContext fxMesa,
       exit(-1);
    }
 
-   /* NEJC SOF: Coalesce subimage updates - accumulate dirty rects for potential coalescing */
-   if (!ti->has_dirty_subimage)
-   {
-      ti->has_dirty_subimage = GL_TRUE;
-      ti->dirty_minY = yoffset;
-      ti->dirty_maxY = yoffset + height - 1;
-   }
-   else
-   {
-      /* Expand the dirty rectangle */
-      if (yoffset < ti->dirty_minY)
-         ti->dirty_minY = yoffset;
-      if (yoffset + height - 1 > ti->dirty_maxY)
-         ti->dirty_maxY = yoffset + height - 1;
-   }
-
    /* Ensure residency only if needed */
    tmu = (int)ti->whichTMU;
    if (!ti->isInTM || ti->tm[tmu] == NULL)
@@ -762,7 +727,7 @@ void fxTMReloadSubMipMapLevel(fxMesaContext fxMesa,
    /* Compute lod level consistent with full uploads */
    lodlevel = ti->info.largeLodLog2 - (level - ti->minLevel);
 
-   /* Compute byte-accurate row pointer */
+   /* NEJC SOF STUTTER FIX compute byte-accurate row pointer */
    {
       int bpp = 2;
       switch (ti->info.format)
@@ -795,8 +760,6 @@ void fxTMReloadSubMipMapLevel(fxMesaContext fxMesa,
                                       ti->info.format,
                                       GR_MIPMAPLEVELMASK_BOTH, data,
                                       yoffset, yoffset + height - 1);
-
-      fxMesa->stats.subuploads_per_frame++;
       break;
    case FX_TMU_SPLIT:
       grTexDownloadMipMapLevelPartial(GR_TMU0,
@@ -816,8 +779,6 @@ void fxTMReloadSubMipMapLevel(fxMesaContext fxMesa,
                                       ti->info.format,
                                       GR_MIPMAPLEVELMASK_EVEN, data,
                                       yoffset, yoffset + height - 1);
-
-      fxMesa->stats.subuploads_per_frame += 2;
       break;
    case FX_TMU_BOTH:
       grTexDownloadMipMapLevelPartial(GR_TMU0,
@@ -837,8 +798,6 @@ void fxTMReloadSubMipMapLevel(fxMesaContext fxMesa,
                                       ti->info.format,
                                       GR_MIPMAPLEVELMASK_BOTH, data,
                                       yoffset, yoffset + height - 1);
-
-      fxMesa->stats.subuploads_per_frame += 2;
       break;
    default:
       fprintf(stderr, "fxTMReloadSubMipMapLevel: INTERNAL ERROR: wrong tmu (%d)\n", tmu);

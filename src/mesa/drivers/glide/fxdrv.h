@@ -255,19 +255,6 @@ typedef struct
    GrTextureFormat_t glideFormat; /* Glide image format */
 } tfxMipMapLevel;
 
-/* NEJC SOF: Lazy grTexSource + combine programming */
-typedef struct
-{
-   struct gl_texture_object *last_tObj; /* track texture object identity */
-   GrTexInfo last_info;                 /* copy of ti->info/sys_texture fields used in grTexSource */
-   FxU32 last_startAddr;
-   GrMipMapMode_t last_mmMode;
-   GrTextureFilterMode_t last_minFilt, last_maxFilt;
-   GrTextureClampMode_t last_sClamp, last_tClamp;
-   /* CRC of last uploaded palette per TMU */
-   FxU32 last_palette_crc[FX_NUM_TMU];
-} FxTMUStateCache;
-
 /*
  * TDFX-specific texture object data.  This hangs off of the
  * struct gl_texture_object DriverData pointer.
@@ -306,19 +293,6 @@ typedef struct tfxTexInfo_t
    GLboolean validated;
 
    GLboolean padded;
-
-   /* NEJC SOF: New fields for TMU affinity and pinning */
-   GLint tmu_affinity;     /* -1 = none, 0/1 = prefer this TMU */
-   GLuint pin_until_frame; /* frame index until which we refuse to move it */
-   GLuint upload_stamp[2]; /* last frame this texture was uploaded to TMU n */
-
-   /* Pool selection sanity */
-   GLint pool; /* -1 = not set, else locked pool index */
-
-   /* Coalesce subimage updates */
-   /* dirty rects per level per TMU - simplified to one per texture for now */
-   GLint dirty_minY, dirty_maxY; /* -1 if no dirty */
-   GLboolean has_dirty_subimage; /* true if there are pending subimage updates */
 } tfxTexInfo;
 
 typedef struct
@@ -327,12 +301,6 @@ typedef struct
    GLuint reqTexUpload;
    GLuint texUpload;
    GLuint memTexUpload;
-
-   /* NEJC SOF: Instrumentation */
-   uint32_t evictions_per_frame;
-   uint32_t uploads_per_frame;    /* all levels */
-   uint32_t subuploads_per_frame; /* partials */
-   uint32_t tmu_swaps_per_frame;  /* moved texture to other TMU */
 } tfxStats;
 
 typedef struct
@@ -558,11 +526,6 @@ struct tfxMesaContext
    FxBool HaveTexus2; /* Texus 2 - FXT1 */
    struct tdfx_glide Glide;
    char rendererString[64];
-
-   /* NEJC SOF: Frame counter and TMU state cache */
-   GLuint frame_no;     /* increment once per SwapBuffers */
-   GLuint upload_epoch; /* bump when you wipe TMU pool or reset residency */
-   FxTMUStateCache tmu_cache[FX_NUM_TMU];
 };
 
 extern void fxSetupFXUnits(GLcontext *);
@@ -823,8 +786,8 @@ extern int TDFX_DEBUG;
 #endif
 
 /* dirty hacks */
-#define FX_RESCALE_BIG_TEXURES_HACK 0   /* fake textures larger than HW can support */
+#define FX_RESCALE_BIG_TEXURES_HACK 0 /* fake textures larger than HW can support */
 #define FX_COMPRESS_S3TC_AS_FXT1_HACK 1 /* map S3TC to FXT1 */
-#define FX_TC_NAPALM 1                  /* map GL_COMPRESSED_RGB[A] to FXT1. Works with VSA100-based cards only. */
+#define FX_TC_NAPALM 1 /* map GL_COMPRESSED_RGB[A] to FXT1. Works with VSA100-based cards only. */
 
 #endif

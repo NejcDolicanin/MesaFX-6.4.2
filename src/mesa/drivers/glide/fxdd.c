@@ -1816,17 +1816,6 @@ int fxDDInitFxMesaContext(fxMesaContext fxMesa)
    fxMesa->stats.texUpload = 0;
    fxMesa->stats.memTexUpload = 0;
 
-   /* NEJC SOF: Initialize instrumentation counters */
-   fxMesa->stats.evictions_per_frame = 0;
-   fxMesa->stats.uploads_per_frame = 0;
-   fxMesa->stats.subuploads_per_frame = 0;
-   fxMesa->stats.tmu_swaps_per_frame = 0;
-
-   /* NEJC SOF: Initialize frame counter and TMU caches */
-   fxMesa->frame_no = 0;
-   fxMesa->upload_epoch = 0;
-   memset(fxMesa->tmu_cache, 0, sizeof(fxMesa->tmu_cache));
-
    fxMesa->tmuSrc = FX_TMU_NONE;
    fxMesa->lastUnitsMode = FX_UM_NONE;
    fxTMInit(fxMesa);
