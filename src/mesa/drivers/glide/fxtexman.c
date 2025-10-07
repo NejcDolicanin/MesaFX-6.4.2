@@ -216,10 +216,8 @@ fxTMFindStartAddr(fxMesaContext fxMesa, GLint tmu, int size)
    }
 
    /* NEJC SOF TMU: Reset consecutive swaps counter if enough time has passed */
-   if (currentFrame != lastSwapFrame)
-   {
-      if (currentFrame - lastSwapFrame > SWAP_RESET_THRESHOLD)
-      {
+   if (currentFrame != lastSwapFrame) {
+      if (currentFrame - lastSwapFrame > SWAP_RESET_THRESHOLD) {
          consecutiveSwaps = 0;
       }
       lastSwapFrame = currentFrame;
@@ -255,17 +253,15 @@ fxTMFindStartAddr(fxMesaContext fxMesa, GLint tmu, int size)
          prev = tmp;
          tmp = tmp->next;
       }
-
+      
       /* NEJC SOF TMU: Check for texture thrashing before evicting */
-      if (consecutiveSwaps >= MAX_CONSECUTIVE_SWAPS)
-      {
-         if (TDFX_DEBUG & VERBOSE_TEXTURE)
-         {
+      if (consecutiveSwaps >= MAX_CONSECUTIVE_SWAPS) {
+         if (TDFX_DEBUG & VERBOSE_TEXTURE) {
             fprintf(stderr, "fxTMFindStartAddr: Texture thrashing detected, failing allocation\n");
          }
          return -1; /* Force fallback to prevent thrashing */
       }
-
+      
       /* No free space. Discard oldest */
       if (TDFX_DEBUG & VERBOSE_TEXTURE)
       {
@@ -640,7 +636,6 @@ void fxTMReloadMipMapLevel(fxMesaContext fxMesa, struct gl_texture_object *tObj,
    fxMesa->stats.reqTexUpload++;
    fxMesa->stats.texUpload++;
 
-   /* Compute Glide LOD level from level index */
    lodlevel = ti->info.largeLodLog2 - (level - ti->minLevel);
 
    switch (tmu)
@@ -703,7 +698,7 @@ void fxTMReloadSubMipMapLevel(fxMesaContext fxMesa,
 {
    tfxTexInfo *ti = fxTMGetTexInfo(tObj);
    GrLOD_t lodlevel;
-   void *data;
+   unsigned short *data;
    GLint tmu;
    struct gl_texture_image *texImage = tObj->Image[0][level];
    tfxMipMapLevel *mml = FX_MIPMAP_DATA(texImage);
@@ -717,36 +712,18 @@ void fxTMReloadSubMipMapLevel(fxMesaContext fxMesa,
       exit(-1);
    }
 
-   /* Ensure residency only if needed */
    tmu = (int)ti->whichTMU;
-   if (!ti->isInTM || ti->tm[tmu] == NULL)
-   {
-      fxTMMoveInTM(fxMesa, tObj, tmu);
-   }
+   fxTMMoveInTM(fxMesa, tObj, tmu);
 
-   /* Compute lod level consistent with full uploads */
-   lodlevel = ti->info.largeLodLog2 - (level - ti->minLevel);
+   fxTexGetInfo(mml->width, mml->height,
+                &lodlevel, NULL, NULL, NULL, NULL, NULL);
 
-   /* NEJC SOF STUTTER FIX compute byte-accurate row pointer */
-   {
-      int bpp = 2;
-      switch (ti->info.format)
-      {
-      case GR_TEXFMT_INTENSITY_8:
-      case GR_TEXFMT_P_8:
-      case GR_TEXFMT_ALPHA_8:
-         bpp = 1;
-         break;
-      case GR_TEXFMT_ARGB_8888:
-         bpp = 4;
-         break;
-      default:
-         /* Most uncompressed Glide formats here are 16-bit (2 bytes) */
-         bpp = 2;
-         break;
-      }
-      data = (void *)((GLubyte *)texImage->Data + (yoffset * mml->width * bpp));
-   }
+   if ((ti->info.format == GR_TEXFMT_INTENSITY_8) ||
+       (ti->info.format == GR_TEXFMT_P_8) ||
+       (ti->info.format == GR_TEXFMT_ALPHA_8))
+      data = (GLushort *)texImage->Data + ((yoffset * mml->width) >> 1);
+   else
+      data = (GLushort *)texImage->Data + yoffset * mml->width;
 
    switch (tmu)
    {
