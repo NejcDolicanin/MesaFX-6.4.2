@@ -303,6 +303,22 @@ typedef struct
    GLuint memTexUpload;
 } tfxStats;
 
+/* NEJC SOF TMU: Deferred texture update queue entry with complete pixel data storage and merging support */
+typedef struct tfxDeferredTexUpdate_t
+{
+   struct tfxDeferredTexUpdate_t *next;
+   struct gl_texture_object *texObj;
+   GLint level;
+   GLint x, y, w, h;           /* Update region (bounding box for merged updates) */
+   void *pixelsCopy;           /* Copy of pixel data (merged buffer) */
+   GLint rowStride;            /* Row stride for pixel data */
+   GLenum format, type;        /* Original format and type */
+   GLint texelBytes;           /* Bytes per texel */
+   struct gl_pixelstore_attrib packing; /* Original packing state */
+   GLuint frameNumber;
+   GLboolean isMerged;         /* True if this update contains merged data */
+} tfxDeferredTexUpdate;
+
 typedef struct
 {
    /* Alpha test */
@@ -361,6 +377,7 @@ typedef struct
 
 #define FX_MIPMAP_DATA(img) ((tfxMipMapLevel *)(img)->DriverData)
 
+/* NEJC SOF TMU: Keep original empty macros - board selection handled by context management */
 #define BEGIN_BOARD_LOCK()
 #define END_BOARD_LOCK()
 #define BEGIN_CLIP_LOOP()
@@ -488,6 +505,11 @@ struct tfxMesaContext
     */
    tfxStats stats;
    void *state;
+
+   /* NEJC SOF TMU: Deferred texture update queue */
+   tfxDeferredTexUpdate *deferredTexUpdates;
+   GLuint currentFrameNumber;
+   GLuint maxDeferredUpdates;
 
    /* Options */
 
@@ -636,7 +658,20 @@ extern void fxTMReloadMipMapLevel(fxMesaContext, struct gl_texture_object *,
 extern void fxTMReloadSubMipMapLevel(fxMesaContext,
                                      struct gl_texture_object *, GLint, GLint,
                                      GLint);
+extern void fxTMUploadSubRect(fxMesaContext fxMesa, struct gl_texture_object *texObj, 
+                              GLint level, GLint x, GLint y, GLint w, GLint h);
 extern int fxTMCheckStartAddr(fxMesaContext fxMesa, GLint tmu, tfxTexInfo *ti);
+
+/* NEJC SOF TMU: Deferred texture update queue management */
+extern void fxInitDeferredTexQueue(fxMesaContext fxMesa);
+extern void fxCleanupDeferredTexQueue(fxMesaContext fxMesa);
+extern void fxAddDeferredTexUpdate(fxMesaContext fxMesa, struct gl_texture_object *texObj, GLint level,
+                                   GLint x, GLint y, GLint w, GLint h,
+                                   GLenum format, GLenum type, const GLvoid *pixels,
+                                   const struct gl_pixelstore_attrib *packing,
+                                   struct gl_texture_image *texImage);
+extern void fxFlushDeferredTexUpdates(fxMesaContext fxMesa);
+extern void fxFlushDeferredUpdatesForTexObj(fxMesaContext fxMesa, struct gl_texture_object *texObj);
 
 extern void fxTexGetFormat(GLcontext *, GLenum, GrTextureFormat_t *, GLint *); /* [koolsmoky] */
 
