@@ -312,17 +312,13 @@ typedef struct tfxTexInfo_t
    GLuint pin_until_frame; /* frame index until which we refuse to move it */
    GLuint upload_stamp[2]; /* last frame this texture was uploaded to TMU n */
 
-   GLuint last_upload_epoch; /* Track last upload epoch to force re-upload after global resets */
-
    /* Pool selection sanity */
    GLint pool; /* -1 = not set, else locked pool index */
 
    /* Coalesce subimage updates */
    /* dirty rects per level per TMU - simplified to one per texture for now */
    GLint dirty_minY, dirty_maxY; /* -1 if no dirty */
-   /* TMU Optimizations - track dirty mip levels range for coalesced partial uploads */
-   GLint dirty_level_min, dirty_level_max; /* -1 if no dirty */
-   GLboolean has_dirty_subimage;           /* true if there are pending subimage updates */
+   GLboolean has_dirty_subimage; /* true if there are pending subimage updates */
 } tfxTexInfo;
 
 typedef struct
@@ -337,8 +333,6 @@ typedef struct
    uint32_t uploads_per_frame;    /* all levels */
    uint32_t subuploads_per_frame; /* partials */
    uint32_t tmu_swaps_per_frame;  /* moved texture to other TMU */
-   /* TMU Optimizations - per-frame bytes uploaded per TMU for load balancing */
-   uint32_t bytes_uploaded_tmu[FX_NUM_TMU];
 } tfxStats;
 
 typedef struct
@@ -670,7 +664,6 @@ extern void fxDDInitExtensions(GLcontext *ctx);
 extern void fxTMInit(fxMesaContext ctx);
 extern void fxTMClose(fxMesaContext ctx);
 extern void fxTMRestoreTextures_NoLock(fxMesaContext ctx);
-extern void fxTMFlushPendingSubUploads_NoLock(fxMesaContext ctx);
 extern void fxTMMoveInTM(fxMesaContext, struct gl_texture_object *, GLint);
 extern void fxTMMoveOutTM(fxMesaContext, struct gl_texture_object *);
 #define fxTMMoveOutTM_NoLock fxTMMoveOutTM

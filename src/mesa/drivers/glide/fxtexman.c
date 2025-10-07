@@ -280,7 +280,6 @@ fxTMFindStartAddr(fxMesaContext fxMesa, GLint tmu, int size)
       }
       fxTMMoveOutTM(fxMesa, obj);
       texSwaps++;
-      fxMesa->stats.evictions_per_frame++;
       consecutiveSwaps++; /* NEJC SOF TMU: Track consecutive swaps */
    }
 }
@@ -518,7 +517,6 @@ void fxTMMoveInTM_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj,
       texmemsize = (int)grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &(ti->info));
       ti->tm[where] = fxTMAddObj(fxMesa, tObj, ti->pool, texmemsize);
       fxMesa->stats.memTexUpload += texmemsize;
-      fxMesa->stats.bytes_uploaded_tmu[where] += texmemsize;
 
       for (i = FX_largeLodValue(ti->info), l = ti->minLevel;
            i <= FX_smallLodValue(ti->info); i++, l++)
@@ -540,12 +538,10 @@ void fxTMMoveInTM_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj,
       texmemsize = (int)grTexTextureMemRequired(GR_MIPMAPLEVELMASK_ODD, &(ti->info));
       ti->tm[FX_TMU0] = fxTMAddObj(fxMesa, tObj, FX_TMU0, texmemsize);
       fxMesa->stats.memTexUpload += texmemsize;
-      fxMesa->stats.bytes_uploaded_tmu[FX_TMU0] += texmemsize;
 
       texmemsize = (int)grTexTextureMemRequired(GR_MIPMAPLEVELMASK_EVEN, &(ti->info));
       ti->tm[FX_TMU1] = fxTMAddObj(fxMesa, tObj, FX_TMU1, texmemsize);
       fxMesa->stats.memTexUpload += texmemsize;
-      fxMesa->stats.bytes_uploaded_tmu[FX_TMU1] += texmemsize;
 
       for (i = FX_largeLodValue(ti->info), l = ti->minLevel;
            i <= FX_smallLodValue(ti->info); i++, l++)
@@ -577,12 +573,10 @@ void fxTMMoveInTM_NoLock(fxMesaContext fxMesa, struct gl_texture_object *tObj,
       texmemsize = (int)grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &(ti->info));
       ti->tm[FX_TMU0] = fxTMAddObj(fxMesa, tObj, FX_TMU0, texmemsize);
       fxMesa->stats.memTexUpload += texmemsize;
-      fxMesa->stats.bytes_uploaded_tmu[FX_TMU0] += texmemsize;
 
       /*texmemsize = (int)grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &(ti->info));*/
       ti->tm[FX_TMU1] = fxTMAddObj(fxMesa, tObj, FX_TMU1, texmemsize);
       fxMesa->stats.memTexUpload += texmemsize;
-      fxMesa->stats.bytes_uploaded_tmu[FX_TMU1] += texmemsize;
 
       for (i = FX_largeLodValue(ti->info), l = ti->minLevel;
            i <= FX_smallLodValue(ti->info); i++, l++)
@@ -748,20 +742,14 @@ void fxTMReloadSubMipMapLevel(fxMesaContext fxMesa,
       ti->has_dirty_subimage = GL_TRUE;
       ti->dirty_minY = yoffset;
       ti->dirty_maxY = yoffset + height - 1;
-      ti->dirty_level_min = level;
-      ti->dirty_level_max = level;
    }
    else
    {
-      /* Expand the dirty rectangle and level range */
+      /* Expand the dirty rectangle */
       if (yoffset < ti->dirty_minY)
          ti->dirty_minY = yoffset;
       if (yoffset + height - 1 > ti->dirty_maxY)
          ti->dirty_maxY = yoffset + height - 1;
-      if (level < ti->dirty_level_min)
-         ti->dirty_level_min = level;
-      if (level > ti->dirty_level_max)
-         ti->dirty_level_max = level;
    }
 
    /* Ensure residency only if needed */
@@ -965,135 +953,6 @@ void fxTMClose(fxMesaContext fxMesa)
          FREE(tmp);
          tmp = next;
       }
-   }
-}
-
-/* Nejc TMU Optimizations - Flush coalesced subimage updates in batch.
- * Walk all textures and upload pending dirty regions (levels [dirty_level_min..dirty_level_max],
- * rows [dirty_minY..dirty_maxY]). This is a conservative flush intended to reduce redundant
- * partial uploads within a frame while preserving correctness.
- */
-void fxTMFlushPendingSubUploads_NoLock(fxMesaContext ctx)
-{
-   struct _mesa_HashTable *textures = ctx->glCtx->Shared->TexObjects;
-   GLuint id;
-
-   for (id = _mesa_HashFirstEntry(textures);
-        id;
-        id = _mesa_HashNextEntry(textures, id))
-   {
-      struct gl_texture_object *tObj =
-          (struct gl_texture_object *)_mesa_HashLookup(textures, id);
-      tfxTexInfo *ti = fxTMGetTexInfo(tObj);
-
-      if (!ti || !ti->has_dirty_subimage || !ti->isInTM)
-         continue;
-
-      /* Determine level interval to flush */
-      GLint lmin = (ti->dirty_level_min >= 0) ? ti->dirty_level_min : ti->minLevel;
-      GLint lmax = (ti->dirty_level_max >= 0) ? ti->dirty_level_max : lmin;
-
-      /* Resolve target TMU configuration once */
-      GLint tmu = (GLint)ti->whichTMU;
-
-      for (GLint level = lmin; level <= lmax; ++level)
-      {
-         struct gl_texture_image *texImage = tObj->Image[0][level];
-         if (!texImage)
-            continue;
-
-         tfxMipMapLevel *mml = FX_MIPMAP_DATA(texImage);
-         if (!mml || mml->width <= 0 || mml->height <= 0)
-            continue;
-
-         /* Compute lodlevel for this level */
-         GrLOD_t lodlevel;
-         fxTexGetInfo(mml->width, mml->height, &lodlevel, NULL, NULL, NULL, NULL, NULL);
-
-         /* Clamp dirty Y range to this level's height */
-         GLint y0 = CLAMP(ti->dirty_minY, 0, mml->height - 1);
-         GLint y1 = CLAMP(ti->dirty_maxY, y0, mml->height - 1);
-
-         /* Compute data pointer at y0 */
-         GLushort *data;
-         if ((ti->info.format == GR_TEXFMT_INTENSITY_8) ||
-             (ti->info.format == GR_TEXFMT_P_8) ||
-             (ti->info.format == GR_TEXFMT_ALPHA_8))
-            data = (GLushort *)texImage->Data + ((y0 * mml->width) >> 1);
-         else
-            data = (GLushort *)texImage->Data + y0 * mml->width;
-
-         /* Issue partial uploads according to residency */
-         switch (tmu)
-         {
-         case FX_TMU0:
-         case FX_TMU1:
-            grTexDownloadMipMapLevelPartial(tmu,
-                                            ti->tm[tmu]->startAddr,
-                                            FX_valueToLod(FX_lodToValue(lodlevel) + level),
-                                            FX_largeLodLog2(ti->info),
-                                            FX_aspectRatioLog2(ti->info),
-                                            ti->info.format,
-                                            GR_MIPMAPLEVELMASK_BOTH,
-                                            data,
-                                            y0, y1);
-            ctx->stats.subuploads_per_frame++;
-            break;
-
-         case FX_TMU_SPLIT:
-            grTexDownloadMipMapLevelPartial(GR_TMU0,
-                                            ti->tm[FX_TMU0]->startAddr,
-                                            FX_valueToLod(FX_lodToValue(lodlevel) + level),
-                                            FX_largeLodLog2(ti->info),
-                                            FX_aspectRatioLog2(ti->info),
-                                            ti->info.format,
-                                            GR_MIPMAPLEVELMASK_ODD,
-                                            data,
-                                            y0, y1);
-            grTexDownloadMipMapLevelPartial(GR_TMU1,
-                                            ti->tm[FX_TMU1]->startAddr,
-                                            FX_valueToLod(FX_lodToValue(lodlevel) + level),
-                                            FX_largeLodLog2(ti->info),
-                                            FX_aspectRatioLog2(ti->info),
-                                            ti->info.format,
-                                            GR_MIPMAPLEVELMASK_EVEN,
-                                            data,
-                                            y0, y1);
-            ctx->stats.subuploads_per_frame += 2;
-            break;
-
-         case FX_TMU_BOTH:
-            grTexDownloadMipMapLevelPartial(GR_TMU0,
-                                            ti->tm[FX_TMU0]->startAddr,
-                                            FX_valueToLod(FX_lodToValue(lodlevel) + level),
-                                            FX_largeLodLog2(ti->info),
-                                            FX_aspectRatioLog2(ti->info),
-                                            ti->info.format,
-                                            GR_MIPMAPLEVELMASK_BOTH,
-                                            data,
-                                            y0, y1);
-            grTexDownloadMipMapLevelPartial(GR_TMU1,
-                                            ti->tm[FX_TMU1]->startAddr,
-                                            FX_valueToLod(FX_lodToValue(lodlevel) + level),
-                                            FX_largeLodLog2(ti->info),
-                                            FX_aspectRatioLog2(ti->info),
-                                            ti->info.format,
-                                            GR_MIPMAPLEVELMASK_BOTH,
-                                            data,
-                                            y0, y1);
-            ctx->stats.subuploads_per_frame += 2;
-            break;
-
-         default:
-            /* do nothing */
-            break;
-         }
-      }
-
-      /* Clear dirty markers after flush */
-      ti->has_dirty_subimage = GL_FALSE;
-      ti->dirty_minY = ti->dirty_maxY = -1;
-      ti->dirty_level_min = ti->dirty_level_max = -1;
    }
 }
 
