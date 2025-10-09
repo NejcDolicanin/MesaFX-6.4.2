@@ -591,8 +591,9 @@ fxSetupTextureSingleTMU_NoLock(GLcontext *ctx, GLuint textureset)
    else
       unitsmode = fxGetTexSetConfiguration(ctx, NULL, tObj);
 
-   /*    if(fxMesa->lastUnitsMode==unitsmode) */
-   /*      return; */
+      /* NEJC SOF SKIP COMBINE IF NO CHANGE */
+      if(fxMesa->lastUnitsMode==unitsmode)
+         return;
 
    fxMesa->lastUnitsMode = unitsmode;
 
@@ -1006,9 +1007,10 @@ fxSetupTextureDoubleTMU_NoLock(GLcontext *ctx)
    fxSetupDoubleTMU_NoLock(fxMesa, tObj0, tObj1);
 
    unitsmode = fxGetTexSetConfiguration(ctx, tObj0, tObj1);
-
-   /*    if(fxMesa->lastUnitsMode==unitsmode) */
-   /*      return; */
+      
+      /* NEJC SOF SKIP COMBINE IF NO CHANGE */
+      if(fxMesa->lastUnitsMode==unitsmode)
+         return;
 
    fxMesa->lastUnitsMode = unitsmode;
 
