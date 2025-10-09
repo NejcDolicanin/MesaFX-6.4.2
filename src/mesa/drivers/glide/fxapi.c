@@ -54,10 +54,10 @@ int TDFX_DEBUG = (0
                   /*		  | VERBOSE_DRIVER   */     /* Daddy */
                   /*      | VERBOSE_STATE    */     /*Mesa verbose*/
                   /*      | VERBOSE_API        */   /* Mesa */
-                  /*		  | VERBOSE_DISPLAY_LIST*/  /**/
-                  /*		  | VERBOSE_LIGHTING */     /**/
-                  /*		  | VERBOSE_PRIMS */        /**/
-                  /*		  | VERBOSE_VERTS */        /*TMU Oni*/
+                  /*		  | VERBOSE_DISPLAY_LIST*/  /* Not used */
+                  /*		  | VERBOSE_LIGHTING */     /* Not used */
+                  /*		  | VERBOSE_PRIMS */        /* Not used */
+                  /*		  | VERBOSE_VERTS */        /* Not used */
 );
 #endif
 
