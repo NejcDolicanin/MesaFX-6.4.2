@@ -1027,7 +1027,7 @@ fxMesaDestroyContext(fxMesaContext fxMesa)
    _mesa_destroy_visual(fxMesa->glVis);
    _mesa_destroy_context(fxMesa->glCtx);
    _mesa_destroy_framebuffer(fxMesa->glBuffer); /*Nejc ToDo - we now use fxFramebuffer so check this*/
-   fxTMClose(fxMesa); /* must be after _mesa_destroy_context */
+   fxTMClose(fxMesa);                           /* must be after _mesa_destroy_context */
 
    FREE(fxMesa);
 
@@ -1121,6 +1121,11 @@ fxMesaSwapBuffers(void)
 
       /* Increment frame counter */
       fxMesaCurrentCtx->frame_no++;
+
+      /* Reset combine guard here too */
+      fxMesaCurrentCtx->lastCombineTex[0] = NULL;
+      fxMesaCurrentCtx->lastCombineTex[1] = NULL;
+      fxMesaCurrentCtx->lastUnitsMode = FX_UM_NONE;
    }
 }
 

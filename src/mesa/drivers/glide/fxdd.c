@@ -1820,7 +1820,10 @@ int fxDDInitFxMesaContext(fxMesaContext fxMesa)
    fxMesa->frame_no = 0;
 
    fxMesa->tmuSrc = FX_TMU_NONE;
-   fxMesa->lastUnitsMode = FX_UM_NONE;
+   fxMesa->lastUnitsMode = FX_UM_NONE; /* Last combine */
+   /* SKIP COMBINE - Init lastCombine tracking */
+   fxMesa->lastCombineTex[0] = NULL;
+   fxMesa->lastCombineTex[1] = NULL;
    fxTMInit(fxMesa);
 
    /* FX units setup */

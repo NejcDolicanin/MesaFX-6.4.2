@@ -303,7 +303,7 @@ typedef struct tfxTexInfo_t
 
    GLboolean padded;
 
-   /* NEJC SOF: New fields for TMU affinity and pinning */
+   /* New fields for TMU affinity and pinning */
    GLuint upload_stamp[2];   /* last frame this texture was uploaded to TMU n */
 
     /* Streaming texture detection to avoid CPU S3TC/FXT1 overhead */
@@ -550,6 +550,9 @@ struct tfxMesaContext
 
    /* Frame counter and TMU state cache */
    GLuint frame_no;     /* increment once per SwapBuffers */
+
+   /* Skip combine - Last combine tracking */
+   struct gl_texture_object *lastCombineTex[2]; /* one per texture unit */
 };
 
 extern void fxSetupFXUnits(GLcontext *);

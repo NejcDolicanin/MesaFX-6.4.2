@@ -591,11 +591,16 @@ fxSetupTextureSingleTMU_NoLock(GLcontext *ctx, GLuint textureset)
    else
       unitsmode = fxGetTexSetConfiguration(ctx, NULL, tObj);
 
-      /* NEJC SOF SKIP COMBINE IF NO CHANGE */
-      if(fxMesa->lastUnitsMode==unitsmode)
-         return;
+   /* Safe skip: only when both combine mode and bound texture match */
+   if (fxMesa->lastUnitsMode == unitsmode &&
+       fxMesa->lastCombineTex[textureset] == tObj)
+   {
+      return;
+   }
 
+   /* Update the guard keys */
    fxMesa->lastUnitsMode = unitsmode;
+   fxMesa->lastCombineTex[textureset] = tObj;
 
    fxMesa->stw_hint_state = 0;
    FX_grHints_NoLock(GR_HINT_STWHINT, 0);
@@ -1007,12 +1012,18 @@ fxSetupTextureDoubleTMU_NoLock(GLcontext *ctx)
    fxSetupDoubleTMU_NoLock(fxMesa, tObj0, tObj1);
 
    unitsmode = fxGetTexSetConfiguration(ctx, tObj0, tObj1);
-      
-      /* NEJC SOF SKIP COMBINE IF NO CHANGE */
-      if(fxMesa->lastUnitsMode==unitsmode)
-         return;
 
+   /* Safe skip: only when both combine mode and bound texture match */
+   if (fxMesa->lastUnitsMode == unitsmode &&
+       fxMesa->lastCombineTex[0] == tObj0 &&
+       fxMesa->lastCombineTex[1] == tObj1) {
+      return;
+   }
+
+   /* Update the guard keys */
    fxMesa->lastUnitsMode = unitsmode;
+   fxMesa->lastCombineTex[0] = tObj0;
+   fxMesa->lastCombineTex[1] = tObj1;
 
    fxMesa->stw_hint_state |= GR_STWHINT_ST_DIFF_TMU1;
    FX_grHints_NoLock(GR_HINT_STWHINT, fxMesa->stw_hint_state);
@@ -1384,6 +1395,8 @@ fxSetupTextureNone_NoLock(GLcontext *ctx)
                   GR_COMBINE_OTHER_NONE,
                   FXFALSE);
 
+   /* Reset on full TMU flush*/
+   fxMesa->lastCombineTex[0] = fxMesa->lastCombineTex[1] = NULL;
    fxMesa->lastUnitsMode = FX_UM_NONE;
 }
 
