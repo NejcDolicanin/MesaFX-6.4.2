@@ -207,7 +207,6 @@ static int curPFD = 0;
 static HDC hDC;
 static HWND hWND;
 
-
 /* For the in-window-rendering hack */
 
 #ifndef GR_CONTROL_RESIZE
@@ -263,20 +262,23 @@ __wglMonitor(HWND hwnd, UINT message, UINT wParam, LONG lParam)
          break;
       case WM_CLOSE:
          /* Nejc - Handle window close - if we still have a context, destroy it now */
-         if (ctx) {
+         if (ctx)
+         {
             fxMesaDestroyContext(ctx);
             ctx = NULL;
             hDC = 0;
          }
          /* nejc - Restore window procedure before window closes */
-         if (hWNDOldProc) {
+         if (hWNDOldProc)
+         {
             SetWindowLong(hwnd, GWL_WNDPROC, (LONG)hWNDOldProc);
             hWNDOldProc = NULL;
          }
          break;
       case WM_DESTROY:
          /* Nejc - Ensure window procedure is restored on destruction */
-         if (ctx) {
+         if (ctx)
+         {
             SetWindowLong(hwnd, GWL_WNDPROC, (LONG)hWNDOldProc);
          }
          break;
@@ -838,15 +840,15 @@ static int
 pfd_tablen(void)
 {
    // Nejc 16-bit override, limit to 2 pixelFormats 565 single buffer and 565 double buffer
-   int boardType = 0;
+   // int boardType = 0;
 
-   //    /* Check for forced 16-bit pixel format registry/environment variable */
-      if (fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_PIX") != NULL) {
-         boardType = fxMesaSelectCurrentBoard(0);
-         if (boardType == GR_SSTTYPE_Voodoo5 || boardType == GR_SSTTYPE_Voodoo4) {
-            return 2; /* Force only 16-bit entries for Voodoo4/5 */
-         }
-      }
+   // //    /* Check for forced 16-bit pixel format registry/environment variable */
+   //    if (fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_PIX") != NULL) {
+   //       boardType = fxMesaSelectCurrentBoard(0);
+   //       if (boardType == GR_SSTTYPE_Voodoo5 || boardType == GR_SSTTYPE_Voodoo4) {
+   //          return 2; /* Force only 16-bit entries for Voodoo4/5 */
+   //       }
+   //    }
 
    /* we should take an envvar for `fxMesaSelectCurrentBoard' */
    return (fxMesaSelectCurrentBoard(0) < GR_SSTTYPE_Voodoo4)
@@ -882,29 +884,28 @@ wglChoosePixelFormat(HDC hdc, const PIXELFORMATDESCRIPTOR *ppfd)
    {
       pfd.cDepthBits = 16;
    }
-
-   /* Temp 16bit override for Quake only */
-   /*
+   /* Nejc 16bit override for Quake only */
    if (fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_PIX") != NULL)
    {
       pfd.cDepthBits = 16;
       pfd.cColorBits = 16;
+      //pfd.cStencilBits = 8;
    }
-   */
+
 #endif
 
    /* Nejc Check for forced 16-bit pixel format registry/environment variable - AFTER game-specific logic */
-   if (fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_PIX") != NULL) {
-      int boardType = fxMesaSelectCurrentBoard(0);
-      if (boardType == GR_SSTTYPE_Voodoo5 || boardType == GR_SSTTYPE_Voodoo4) {
-         /* Force 16-bit color depth and return appropriate format - overrides everything */
-         if (pfd.dwFlags & PFD_DOUBLEBUFFER) {
-            return 2; /* 16-bit RGB565 double buffer */
-         } else {
-            return 1; /* 16-bit RGB565 single buffer */
-         }
-      }
-   }
+   // if (fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_PIX") != NULL) {
+   //    int boardType = fxMesaSelectCurrentBoard(0);
+   //    if (boardType == GR_SSTTYPE_Voodoo5 || boardType == GR_SSTTYPE_Voodoo4) {
+   //       /* Force 16-bit color depth and return appropriate format - overrides everything */
+   //       if (pfd.dwFlags & PFD_DOUBLEBUFFER) {
+   //          return 2; /* 16-bit RGB565 double buffer */
+   //       } else {
+   //          return 1; /* 16-bit RGB565 single buffer */
+   //       }
+   //    }
+   // }
 
    if (pfd.nSize != sizeof(PIXELFORMATDESCRIPTOR) || pfd.nVersion != 1)
    {
@@ -1055,23 +1056,23 @@ wglSetPixelFormat(HDC hdc, int iPixelFormat, const PIXELFORMATDESCRIPTOR *ppfd)
    qt_valid_pix = pfd_tablen();
 
    /* Nejc Check for forced 16-bit pixel format registry/environment variable */
-   if (fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_PIX") != NULL)
-   {
-      int boardType = fxMesaSelectCurrentBoard(0);
-      if (boardType == GR_SSTTYPE_Voodoo5 || boardType == GR_SSTTYPE_Voodoo4)
-      {
-         /* Force 16-bit pixel format - override any requested format */
-         if (ppfd && (ppfd->dwFlags & PFD_DOUBLEBUFFER))
-         {
-            curPFD = 2; /* 16-bit RGB565 double buffer */
-         }
-         else
-         {
-            curPFD = 1; /* 16-bit RGB565 single buffer */
-         }
-         return TRUE;
-      }
-   }
+   // if (fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_PIX") != NULL)
+   // {
+   //    int boardType = fxMesaSelectCurrentBoard(0);
+   //    if (boardType == GR_SSTTYPE_Voodoo5 || boardType == GR_SSTTYPE_Voodoo4)
+   //    {
+   //       /* Force 16-bit pixel format - override any requested format */
+   //       if (ppfd && (ppfd->dwFlags & PFD_DOUBLEBUFFER))
+   //       {
+   //          curPFD = 2; /* 16-bit RGB565 double buffer */
+   //       }
+   //       else
+   //       {
+   //          curPFD = 1; /* 16-bit RGB565 single buffer */
+   //       }
+   //       return TRUE;
+   //    }
+   // }
 
    if (iPixelFormat < 1 || iPixelFormat > qt_valid_pix)
    {
