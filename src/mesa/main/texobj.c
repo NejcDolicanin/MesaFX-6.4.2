@@ -621,7 +621,7 @@ _mesa_GenTextures(GLsizei n, GLuint *textures)
 
       /* NEJC SOF temp FIX: delay reuse by bumping IDs into a higher range */
       if (name > 0) {
-         name += 128;  /* safe margin before reuse */
+         name += 256;  /* safe margin before reuse */
       }
 
       if (!texObj)
