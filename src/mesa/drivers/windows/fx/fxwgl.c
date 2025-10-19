@@ -261,26 +261,8 @@ __wglMonitor(HWND hwnd, UINT message, UINT wParam, LONG lParam)
       case WM_SHOWWINDOW:
          break;
       case WM_CLOSE:
-         /* Nejc - Handle window close - if we still have a context, destroy it now */
-         if (ctx)
-         {
-            fxMesaDestroyContext(ctx);
-            ctx = NULL;
-            hDC = 0;
-         }
-         /* nejc - Restore window procedure before window closes */
-         if (hWNDOldProc)
-         {
-            SetWindowLong(hwnd, GWL_WNDPROC, (LONG)hWNDOldProc);
-            hWNDOldProc = NULL;
-         }
          break;
       case WM_DESTROY:
-         /* Nejc - Ensure window procedure is restored on destruction */
-         if (ctx)
-         {
-            SetWindowLong(hwnd, GWL_WNDPROC, (LONG)hWNDOldProc);
-         }
          break;
       case WM_SYSKEYDOWN:
       case WM_SYSCHAR:
@@ -393,12 +375,7 @@ wglDeleteContext(HGLRC hglrc)
    {
       fxMesaDestroyContext(ctx);
 
-      /* Nejc - Only restore window procedure if we haven't already done it in WM_DESTROY */
-      if (hWNDOldProc)
-      {
-         SetWindowLong(WindowFromDC(hDC), GWL_WNDPROC, (LONG)hWNDOldProc);
-         hWNDOldProc = NULL; /* Clear to prevent double restoration */
-      }
+      SetWindowLong(WindowFromDC(hDC), GWL_WNDPROC, (LONG)hWNDOldProc);
 
       ctx = NULL;
       hDC = 0;
@@ -669,15 +646,7 @@ GLAPI BOOL GLAPIENTRY
 wglMakeCurrent(HDC hdc, HGLRC hglrc)
 {
    if ((hdc == NULL) && (hglrc == NULL))
-   {
-      /* Nejc - Context is being deactivated, restore window procedure immediately */
-      if (ctx && hWNDOldProc)
-      {
-         SetWindowLong(hWND, GWL_WNDPROC, (LONG)hWNDOldProc);
-         hWNDOldProc = NULL; /* Clear to prevent double restoration */
-      }
       return TRUE;
-   }
 
    if (!ctx || hglrc != (HGLRC)1 || WindowFromDC(hdc) != hWND)
    {

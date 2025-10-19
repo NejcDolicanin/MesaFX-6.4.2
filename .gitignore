@@ -71,3 +71,4 @@ debug_opengl32.c
 .vs/*
 .vscode
 .vscode/*
+mesa62/*
