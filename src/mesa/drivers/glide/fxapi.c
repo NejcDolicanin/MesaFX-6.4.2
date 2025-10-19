@@ -650,7 +650,10 @@ fxMesaCreateContext(GLuint win,
       fxMesa->haveHwAlpha = GL_TRUE;
    }
 
-   fxMesa->haveHwStencil = (fxMesa->HavePixExt && stencilSize && depthSize == 24);
+   /* Nejc STENCIL: Enable hardware stencil for both 16-bit and 32-bit modes
+    * Now also enabled for 16-bit modes when depth buffer is requested
+    */
+   fxMesa->haveHwStencil = (fxMesa->HavePixExt && stencilSize && depthSize > 0);
 
    fxMesa->haveZBuffer = depthSize > 0;
    fxMesa->haveDoubleBuffer = doubleBuffer;

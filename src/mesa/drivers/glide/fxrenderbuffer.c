@@ -112,18 +112,19 @@ fxAllocDepthRenderbuffer(GLcontext *ctx, struct gl_renderbuffer *rb,
    rb->InternalFormat = internalFormat;
    rb->_BaseFormat = GL_DEPTH_COMPONENT;
 
-   /* Set depth format based on hardware */
+   /* Nejc STENCIL: Set depth format based on hardware stencil capability
+    * When hardware stencil is available (PixExt)
+    * This now works for both 16-bit and 32-bit color modes
+    */
    if (fxMesa->haveHwStencil)
    {
       /* 24-bit depth + 8-bit stencil */
       rb->DataType = GL_UNSIGNED_INT;
-      /* Mesa 6.3+ removed direct bit fields from renderbuffer */
    }
    else
    {
-      /* 16-bit depth */
+      /* 16-bit depth, if withoput stencil */
       rb->DataType = GL_UNSIGNED_SHORT;
-      /* Mesa 6.3+ removed direct bit fields from renderbuffer */
    }
 
    return GL_TRUE;

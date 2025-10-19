@@ -79,8 +79,9 @@ struct __pixelformat__
 WINGDIAPI void GLAPIENTRY gl3DfxSetPaletteEXT(GLuint *);
 static GLushort gammaTable[3 * 256];
 
+/* Nejc - Added 8bit stencil to 16bit modes */
 struct __pixelformat__ pix[] = {
-    /* 16bit RGB565 single buffer with depth */
+    /* 16bit RGB565 single buffer with depth and stencil */
     {
         {sizeof(PIXELFORMATDESCRIPTOR), 1,
          PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL,
@@ -89,17 +90,17 @@ struct __pixelformat__ pix[] = {
          5, 0, 6, 5, 5, 11, 0, 0,
          0, 0, 0, 0, 0,
          16,
-         0,
+         8,
          0,
          PFD_MAIN_PLANE,
          0, 0, 0, 0},
         {FXMESA_COLORDEPTH, 16,
          FXMESA_ALPHA_SIZE, 0,
          FXMESA_DEPTH_SIZE, 16,
-         FXMESA_STENCIL_SIZE, 0,
+         FXMESA_STENCIL_SIZE, 8,
          FXMESA_ACCUM_SIZE, 0,
          FXMESA_NONE}},
-    /* 16bit RGB565 double buffer with depth */
+    /* 16bit RGB565 double buffer with depth and stencil */
     {
         {sizeof(PIXELFORMATDESCRIPTOR), 1,
          PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL |
@@ -109,7 +110,7 @@ struct __pixelformat__ pix[] = {
          5, 0, 6, 5, 5, 11, 0, 0,
          0, 0, 0, 0, 0,
          16,
-         0,
+         8,
          0,
          PFD_MAIN_PLANE,
          0, 0, 0, 0},
@@ -117,10 +118,10 @@ struct __pixelformat__ pix[] = {
          FXMESA_DOUBLEBUFFER,
          FXMESA_ALPHA_SIZE, 0,
          FXMESA_DEPTH_SIZE, 16,
-         FXMESA_STENCIL_SIZE, 0,
+         FXMESA_STENCIL_SIZE, 8,
          FXMESA_ACCUM_SIZE, 0,
          FXMESA_NONE}},
-    /* 16bit ARGB1555 single buffer with depth */
+    /* 16bit ARGB1555 single buffer with depth and stencil */
     {
         {sizeof(PIXELFORMATDESCRIPTOR), 1,
          PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL,
@@ -129,17 +130,17 @@ struct __pixelformat__ pix[] = {
          5, 0, 5, 5, 5, 10, 1, 15,
          0, 0, 0, 0, 0,
          16,
-         0,
+         8,
          0,
          PFD_MAIN_PLANE,
          0, 0, 0, 0},
         {FXMESA_COLORDEPTH, 15,
          FXMESA_ALPHA_SIZE, 1,
          FXMESA_DEPTH_SIZE, 16,
-         FXMESA_STENCIL_SIZE, 0,
+         FXMESA_STENCIL_SIZE, 8,
          FXMESA_ACCUM_SIZE, 0,
          FXMESA_NONE}},
-    /* 16bit ARGB1555 double buffer with depth */
+    /* 16bit ARGB1555 double buffer with depth and stencil */
     {
         {sizeof(PIXELFORMATDESCRIPTOR), 1,
          PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL |
@@ -149,7 +150,7 @@ struct __pixelformat__ pix[] = {
          5, 0, 5, 5, 5, 10, 1, 15,
          0, 0, 0, 0, 0,
          16,
-         0,
+         8,
          0,
          PFD_MAIN_PLANE,
          0, 0, 0, 0},
@@ -157,10 +158,10 @@ struct __pixelformat__ pix[] = {
          FXMESA_DOUBLEBUFFER,
          FXMESA_ALPHA_SIZE, 1,
          FXMESA_DEPTH_SIZE, 16,
-         FXMESA_STENCIL_SIZE, 0,
+         FXMESA_STENCIL_SIZE, 8,
          FXMESA_ACCUM_SIZE, 0,
          FXMESA_NONE}},
-    /* 32bit ARGB8888 single buffer with depth */
+    /* 32bit ARGB8888 single buffer with depth and stencil */
     {
         {sizeof(PIXELFORMATDESCRIPTOR), 1,
          PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL,
@@ -179,7 +180,7 @@ struct __pixelformat__ pix[] = {
          FXMESA_STENCIL_SIZE, 8,
          FXMESA_ACCUM_SIZE, 0,
          FXMESA_NONE}},
-    /* 32bit ARGB8888 double buffer with depth */
+    /* 32bit ARGB8888 double buffer with depth and stencil */
     {
         {sizeof(PIXELFORMATDESCRIPTOR), 1,
          PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL |
