@@ -47,17 +47,17 @@
 
 #ifndef TDFX_DEBUG
 int TDFX_DEBUG = (0
-                  /*		  | VERBOSE_VARRAY      */  /* fxtris.c */
-                        | VERBOSE_TEXTURE       /* Textures, fxddtex.c, fxtexman.c*/
-                  /*		  | VERBOSE_IMMEDIATE   */  /*Used for fxFramebuffer debug*/
-                  /*		  | VERBOSE_PIPELINE    */  /* fxtris.c */
-                  		  | VERBOSE_DRIVER        /* Daddy */
-                  /*      | VERBOSE_STATE    */     /*Mesa verbose*/
-                  /*      | VERBOSE_API        */   /* Mesa */
-                  /*		  | VERBOSE_DISPLAY_LIST*/  /* Not used */
-                  /*		  | VERBOSE_LIGHTING */     /* Not used */
-                  /*		  | VERBOSE_PRIMS */        /* Not used */
-                  /*		  | VERBOSE_VERTS */        /* Not used */
+                  /*		  | VERBOSE_VARRAY      */ /* fxtris.c */
+                  /*      | VERBOSE_TEXTURE       */     /* Textures, fxddtex.c, fxtexman.c*/
+                  /*		  | VERBOSE_IMMEDIATE   */ /*Used for fxFramebuffer debug*/
+                  /*		  | VERBOSE_PIPELINE    */ /* fxtris.c */
+                  /*      | VERBOSE_DRIVER */            /* Daddy */
+                  /*      | VERBOSE_STATE    */    /*Mesa verbose*/
+                  /*      | VERBOSE_API        */  /* Mesa */
+                  /*		  | VERBOSE_DISPLAY_LIST*/ /* Not used */
+                  /*		  | VERBOSE_LIGHTING */    /* Not used */
+                  /*		  | VERBOSE_PRIMS */       /* Not used */
+                  /*		  | VERBOSE_VERTS */       /* Not used */
 );
 #endif
 
@@ -477,6 +477,17 @@ fxMesaCreateContext(GLuint win,
       fxMesa->HaveTexFmt = GL_FALSE;
    }
 
+   /* Nejc 16bit pixel format override - force at context creation, safety */
+   if (fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_PIX") != NULL)
+   {
+      int boardType = fxMesaSelectCurrentBoard(0);
+      if (boardType == GR_SSTTYPE_Voodoo5 || boardType == GR_SSTTYPE_Voodoo4)
+      {
+         colDepth = 16;
+         depthSize = 16;
+      }
+   }
+
    /* Determine if we need vertex swapping, RGB order and SLI/AA */
    sliaa = 0;
    switch (fxMesa->type)
@@ -651,7 +662,7 @@ fxMesaCreateContext(GLuint win,
    }
 
    /* Nejc STENCIL: Enable hardware stencil for both 16-bit and 32-bit modes
-    * Now also enabled for 16-bit modes when depth buffer is requested
+    * Now also enabled for 16-bit modes when depth buffer is requested (old: depthSize == 24)
     */
    fxMesa->haveHwStencil = (fxMesa->HavePixExt && stencilSize && depthSize > 0);
 
@@ -1088,7 +1099,7 @@ fxMesaMakeCurrent(fxMesaContext fxMesa)
    /* The first time we call MakeCurrent we set the initial viewport size */
    if (fxMesa->glCtx->Viewport.Width == 0)
    {
-       _mesa_set_viewport(fxMesa->glCtx, 0, 0, fxMesa->width, fxMesa->height);
+      _mesa_set_viewport(fxMesa->glCtx, 0, 0, fxMesa->width, fxMesa->height);
    }
 }
 
