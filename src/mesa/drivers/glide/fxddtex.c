@@ -1196,8 +1196,21 @@ fxDDChooseTextureFormat(GLcontext *ctx, GLint internalFormat,
    case GL_RGB10:
    case GL_RGB12:
    case GL_RGB16:
-      result = (allow32bpt) ? &_mesa_texformat_argb8888
-                            : &_mesa_texformat_rgb565;
+      /* Nejc: Fix for Sin crash with MESA_FX_IGNORE_TEXFMT=1
+       * Same issue as RGBA case - force 32-bit when using shared palette */
+      if (!allow32bpt && fxMesa->haveGlobalPaletteTexture)
+      {
+         if (TDFX_DEBUG & VERBOSE_TEXTURE)
+         {
+            fprintf(stderr, "fxDDChooseTextureFormat: Forcing ARGB8888 for RGB due to shared palette mode\n");
+         }
+         result = &_mesa_texformat_argb8888;
+      }
+      else
+      {
+         result = (allow32bpt) ? &_mesa_texformat_argb8888
+                               : &_mesa_texformat_rgb565;
+      }
       break;
    case GL_RGBA2:
    case GL_RGBA4:
@@ -1238,8 +1251,28 @@ fxDDChooseTextureFormat(GLcontext *ctx, GLint internalFormat,
    case GL_RGB10_A2:
    case GL_RGBA12:
    case GL_RGBA16:
-      result = (allow32bpt) ? &_mesa_texformat_argb8888
-                            : &_mesa_texformat_argb4444;
+      /* Nejc: Fix for Sin crash with MESA_FX_IGNORE_TEXFMT=1
+       * When using shared global palette textures with 16-bit formats,
+       * the StoreImage function for ARGB4444 crashes. This is because
+       * the palette texture path expects either 32-bit ARGB8888 or
+       * paletted CI8 format, not 16-bit ARGB4444.
+       * Solution: Force 32-bit textures when shared palette is active.
+       */
+      if (!allow32bpt && fxMesa->haveGlobalPaletteTexture)
+      {
+         /* When forcing 16-bit textures but using shared palette,
+          * we must use 32-bit format to avoid StoreImage crash */
+         if (TDFX_DEBUG & VERBOSE_TEXTURE)
+         {
+            fprintf(stderr, "fxDDChooseTextureFormat: Forcing ARGB8888 due to shared palette mode\n");
+         }
+         result = &_mesa_texformat_argb8888;
+      }
+      else
+      {
+         result = (allow32bpt) ? &_mesa_texformat_argb8888
+                               : &_mesa_texformat_argb4444;
+      }
       break;
    case GL_INTENSITY:
    case GL_INTENSITY4:
