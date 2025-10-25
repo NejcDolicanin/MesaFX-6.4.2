@@ -48,10 +48,10 @@
 #ifndef TDFX_DEBUG
 int TDFX_DEBUG = (0
                   /*		  | VERBOSE_VARRAY      */  /* fxtris.c */
-                  /*      | VERBOSE_TEXTURE      */ /* Textures, fxddtex.c, fxtexman.c*/
+                        | VERBOSE_TEXTURE       /* Textures, fxddtex.c, fxtexman.c*/
                   /*		  | VERBOSE_IMMEDIATE   */  /*Used for fxFramebuffer debug*/
                   /*		  | VERBOSE_PIPELINE    */  /* fxtris.c */
-                  /*		  | VERBOSE_DRIVER   */     /* Daddy */
+                  		  | VERBOSE_DRIVER        /* Daddy */
                   /*      | VERBOSE_STATE    */     /*Mesa verbose*/
                   /*      | VERBOSE_API        */   /* Mesa */
                   /*		  | VERBOSE_DISPLAY_LIST*/  /* Not used */
