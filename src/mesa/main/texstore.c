@@ -1002,6 +1002,43 @@ _mesa_texstore_rgb565(STORE_PARAMS)
          src += srcRowStride;
       }
    }
+   else if (!ctx->_ImageTransferState &&
+            !srcPacking->SwapBytes &&
+            baseInternalFormat == GL_RGB &&
+            srcFormat == GL_RGBA &&
+            srcType == GL_UNSIGNED_BYTE &&
+            dims == 2) {
+      /* Nejc: Optimized path for RGBA->RGB565 (extract RGB, drop alpha)
+       * This avoids the general path that can crash with shared palette mode */
+      const GLint srcRowStride = _mesa_image_row_stride(srcPacking, srcWidth,
+                                                        srcFormat, srcType);
+      const GLubyte *src = (const GLubyte *)
+         _mesa_image_address(dims, srcPacking, srcAddr, srcWidth, srcHeight,
+                             srcFormat, srcType, 0, 0, 0);
+      GLubyte *dst = (GLubyte *) dstAddr
+                   + dstZoffset * dstImageStride
+                   + dstYoffset * dstRowStride
+                   + dstXoffset * dstFormat->TexelBytes;
+      GLint row, col;
+      for (row = 0; row < srcHeight; row++) {
+         const GLubyte *srcUB = (const GLubyte *) src;
+         GLushort *dstUS = (GLushort *) dst;
+         if (dstFormat == &_mesa_texformat_rgb565) {
+            for (col = 0; col < srcWidth; col++) {
+               dstUS[col] = PACK_COLOR_565( srcUB[0], srcUB[1], srcUB[2] );
+               srcUB += 4; /* skip alpha */
+            }
+         }
+         else {
+            for (col = 0; col < srcWidth; col++) {
+               dstUS[col] = PACK_COLOR_565_REV( srcUB[0], srcUB[1], srcUB[2] );
+               srcUB += 4; /* skip alpha */
+            }
+         }
+         dst += dstRowStride;
+         src += srcRowStride;
+      }
+   }
    else {
       /* general path */
       const GLchan *tempImage = _mesa_make_temp_chan_image(ctx, dims,
@@ -1543,6 +1580,43 @@ _mesa_texstore_argb4444(STORE_PARAMS)
                      dstRowStride, dstImageStride,
                      srcWidth, srcHeight, srcDepth, srcFormat, srcType,
                      srcAddr, srcPacking);
+   }
+   else if (!ctx->_ImageTransferState &&
+            !srcPacking->SwapBytes &&
+            baseInternalFormat == GL_RGBA &&
+            srcFormat == GL_RGBA &&
+            srcType == GL_UNSIGNED_BYTE &&
+            dims == 2) {
+      /* Nejc: Optimized path for RGBA->ARGB4444
+       * This avoids the general path that can crash with shared palette mode */
+      const GLint srcRowStride = _mesa_image_row_stride(srcPacking, srcWidth,
+                                                        srcFormat, srcType);
+      const GLubyte *src = (const GLubyte *)
+         _mesa_image_address(dims, srcPacking, srcAddr, srcWidth, srcHeight,
+                             srcFormat, srcType, 0, 0, 0);
+      GLubyte *dst = (GLubyte *) dstAddr
+                   + dstZoffset * dstImageStride
+                   + dstYoffset * dstRowStride
+                   + dstXoffset * dstFormat->TexelBytes;
+      GLint row, col;
+      for (row = 0; row < srcHeight; row++) {
+         const GLubyte *srcUB = (const GLubyte *) src;
+         GLushort *dstUS = (GLushort *) dst;
+         if (dstFormat == &_mesa_texformat_argb4444) {
+            for (col = 0; col < srcWidth; col++) {
+               dstUS[col] = PACK_COLOR_4444( srcUB[3], srcUB[0], srcUB[1], srcUB[2] );
+               srcUB += 4;
+            }
+         }
+         else {
+            for (col = 0; col < srcWidth; col++) {
+               dstUS[col] = PACK_COLOR_4444_REV( srcUB[3], srcUB[0], srcUB[1], srcUB[2] );
+               srcUB += 4;
+            }
+         }
+         dst += dstRowStride;
+         src += srcRowStride;
+      }
    }
    else {
       /* general path */
