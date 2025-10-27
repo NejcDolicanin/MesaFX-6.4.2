@@ -509,6 +509,9 @@ fxMesaCreateContext(GLuint win,
       {
          sliaa = atoi(str);
       }
+      fxMesa->bgrOrder = GL_FALSE;     /* correct for Voodoo 4/5 */
+      fxMesa->snapVertices = GL_FALSE;
+      break;
    case GR_SSTTYPE_Voodoo3:
    default:
       fxMesa->bgrOrder = GL_FALSE;
