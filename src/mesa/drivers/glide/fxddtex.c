@@ -275,7 +275,7 @@ fxAllocTexObjData(fxMesaContext fxMesa)
    ti->tClamp = GR_TEXTURECLAMP_WRAP;
 
    ti->mmMode = GR_MIPMAP_NEAREST;
-  
+
    /* Initialie scale factors to safe defaults for bind-before-gen case*/
    /* 256.0F is a safe identity default, It maps a 1.0 OpenGL coordinate to a full Glide texture span, prevents division with 0 */
    ti->tScale = 256.0F;
@@ -1164,7 +1164,6 @@ fxDDChooseTextureFormat(GLcontext *ctx, GLint internalFormat,
 {
    fxMesaContext fxMesa = FX_CONTEXT(ctx);
    GLboolean allow32bpt = fxMesa->HaveTexFmt;
-   const struct gl_texture_format *result = NULL;
 
    if (TDFX_DEBUG & VERBOSE_TEXTURE)
    {
@@ -1179,8 +1178,7 @@ fxDDChooseTextureFormat(GLcontext *ctx, GLint internalFormat,
       /* Nejc Added from mesaFx6.2, check */
       if (fxMesa->HaveTexus2)
       {
-         result = &_mesa_texformat_argb8888;
-         break;
+         return &_mesa_texformat_argb8888;
       }
 #endif
       /* intentional fall through */
@@ -1188,41 +1186,25 @@ fxDDChooseTextureFormat(GLcontext *ctx, GLint internalFormat,
    case GL_RGB:
       if (srcFormat == GL_RGB && srcType == GL_UNSIGNED_SHORT_5_6_5)
       {
-         result = &_mesa_texformat_rgb565;
-         break;
+         return &_mesa_texformat_rgb565;
       }
       /* intentional fall through */
    case GL_RGB8:
    case GL_RGB10:
    case GL_RGB12:
    case GL_RGB16:
-      /* Nejc: Fix for Sin crash with MESA_FX_IGNORE_TEXFMT=1
-       * Same issue as RGBA case - force 32-bit when using shared palette */
-      if (!allow32bpt && fxMesa->haveGlobalPaletteTexture)
-      {
-         if (TDFX_DEBUG & VERBOSE_TEXTURE)
-         {
-            fprintf(stderr, "fxDDChooseTextureFormat: Forcing ARGB8888 for RGB due to shared palette mode\n");
-         }
-         result = &_mesa_texformat_argb8888;
-      }
-      else
-      {
-         result = (allow32bpt) ? &_mesa_texformat_argb8888
-                               : &_mesa_texformat_rgb565;
-      }
-      break;
+      /* Nejc: Fix for Sin crash with MESA_FX_IGNORE_TEXFMT=1 */
+      return (allow32bpt) ? &_mesa_texformat_argb8888
+                          : &_mesa_texformat_rgb565;
    case GL_RGBA2:
    case GL_RGBA4:
-      result = &_mesa_texformat_argb4444;
-      break;
+      return &_mesa_texformat_argb4444;
    case GL_COMPRESSED_RGBA:
 #if FX_TC_NCC
       /* Nejc Added from mesaFx6.2, check */
       if (fxMesa->HaveTexus2)
       {
-         result = &_mesa_texformat_argb8888;
-         break;
+         return &_mesa_texformat_argb8888;
       }
 #endif
       /* intentional fall through */
@@ -1232,18 +1214,15 @@ fxDDChooseTextureFormat(GLcontext *ctx, GLint internalFormat,
       {
          if (srcType == GL_UNSIGNED_INT_8_8_8_8_REV)
          {
-            result = &_mesa_texformat_argb8888;
-            break;
+            return &_mesa_texformat_argb8888;
          }
          else if (srcType == GL_UNSIGNED_SHORT_4_4_4_4_REV)
          {
-            result = &_mesa_texformat_argb4444;
-            break;
+            return &_mesa_texformat_argb4444;
          }
          else if (srcType == GL_UNSIGNED_SHORT_1_5_5_5_REV)
          {
-            result = &_mesa_texformat_argb1555;
-            break;
+            return &_mesa_texformat_argb1555;
          }
       }
       /* intentional fall through */
@@ -1256,32 +1235,16 @@ fxDDChooseTextureFormat(GLcontext *ctx, GLint internalFormat,
        * the StoreImage function for ARGB4444 crashes. This is because
        * the palette texture path expects either 32-bit ARGB8888 or
        * paletted CI8 format, not 16-bit ARGB4444.
-       * Solution: Force 32-bit textures when shared palette is active.
        */
-      if (!allow32bpt && fxMesa->haveGlobalPaletteTexture)
-      {
-         /* When forcing 16-bit textures but using shared palette,
-          * we must use 32-bit format to avoid StoreImage crash */
-         if (TDFX_DEBUG & VERBOSE_TEXTURE)
-         {
-            fprintf(stderr, "fxDDChooseTextureFormat: Forcing ARGB8888 due to shared palette mode\n");
-         }
-         result = &_mesa_texformat_argb8888;
-      }
-      else
-      {
-         result = (allow32bpt) ? &_mesa_texformat_argb8888
-                               : &_mesa_texformat_argb4444;
-      }
-      break;
+      return (allow32bpt) ? &_mesa_texformat_argb8888
+                          : &_mesa_texformat_argb4444;
    case GL_INTENSITY:
    case GL_INTENSITY4:
    case GL_INTENSITY8:
    case GL_INTENSITY12:
    case GL_INTENSITY16:
    case GL_COMPRESSED_INTENSITY:
-      result = &_mesa_texformat_i8;
-      break;
+      return &_mesa_texformat_i8;
    case 1:
    case GL_LUMINANCE:
    case GL_LUMINANCE4:
@@ -1289,16 +1252,14 @@ fxDDChooseTextureFormat(GLcontext *ctx, GLint internalFormat,
    case GL_LUMINANCE12:
    case GL_LUMINANCE16:
    case GL_COMPRESSED_LUMINANCE:
-      result = &_mesa_texformat_l8;
-      break;
+      return &_mesa_texformat_l8;
    case GL_ALPHA:
    case GL_ALPHA4:
    case GL_ALPHA8:
    case GL_ALPHA12:
    case GL_ALPHA16:
    case GL_COMPRESSED_ALPHA:
-      result = &_mesa_texformat_a8;
-      break;
+      return &_mesa_texformat_a8;
    case GL_COLOR_INDEX:
    case GL_COLOR_INDEX1_EXT:
    case GL_COLOR_INDEX2_EXT:
@@ -1306,8 +1267,7 @@ fxDDChooseTextureFormat(GLcontext *ctx, GLint internalFormat,
    case GL_COLOR_INDEX8_EXT:
    case GL_COLOR_INDEX12_EXT:
    case GL_COLOR_INDEX16_EXT:
-      result = &_mesa_texformat_ci8;
-      break;
+      return &_mesa_texformat_ci8;
    case 2:
    case GL_LUMINANCE_ALPHA:
    case GL_LUMINANCE4_ALPHA4:
@@ -1317,127 +1277,82 @@ fxDDChooseTextureFormat(GLcontext *ctx, GLint internalFormat,
    case GL_LUMINANCE12_ALPHA12:
    case GL_LUMINANCE16_ALPHA16:
    case GL_COMPRESSED_LUMINANCE_ALPHA:
-      result = &_mesa_texformat_al88;
-      break;
+      return &_mesa_texformat_al88;
    case GL_R3_G3_B2:
    case GL_RGB4:
    case GL_RGB5:
-      result = &_mesa_texformat_rgb565;
-      break;
+      return &_mesa_texformat_rgb565;
    case GL_RGB5_A1:
-      result = &_mesa_texformat_argb1555;
-      break;
+      return &_mesa_texformat_argb1555;
    /* GL_EXT_texture_compression_s3tc */
    /* GL_S3_s3tc */
    case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
    case GL_RGB_S3TC:
    case GL_RGB4_S3TC:
-      result = &_mesa_texformat_rgb_dxt1;
-      break;
+      return &_mesa_texformat_rgb_dxt1;
    case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT:
-      result = &_mesa_texformat_rgba_dxt1;
-      break;
+      return &_mesa_texformat_rgba_dxt1;
    case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT:
    case GL_RGBA_S3TC:
    case GL_RGBA4_S3TC:
-      result = &_mesa_texformat_rgba_dxt3;
-      break;
+      return &_mesa_texformat_rgba_dxt3;
    case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:
-      result = &_mesa_texformat_rgba_dxt5;
-      break;
+      return &_mesa_texformat_rgba_dxt5;
    /* GL_3DFX_texture_compression_FXT1 */
    case GL_COMPRESSED_RGB_FXT1_3DFX:
-      result = &_mesa_texformat_rgb_fxt1;
-      break;
+      return &_mesa_texformat_rgb_fxt1;
    case GL_COMPRESSED_RGBA_FXT1_3DFX:
-      result = &_mesa_texformat_rgba_fxt1;
-      break;
+      return &_mesa_texformat_rgba_fxt1;
    default:
       fprintf(stderr, "fxDDChooseTextureFormat: ERROR - unexpected internalFormat 0x%x\n", internalFormat);
       _mesa_problem(NULL, "unexpected format in fxDDChooseTextureFormat");
-      result = NULL;
-      break;
+      return NULL;
    }
-
-   if (TDFX_DEBUG & VERBOSE_TEXTURE)
-   {
-      if (result) {
-         fprintf(stderr, "fxDDChooseTextureFormat returning: MesaFormat=%d, TexelBytes=%d\n",
-                 result->MesaFormat, result->TexelBytes);
-      } else {
-         fprintf(stderr, "fxDDChooseTextureFormat returning: NULL\n");
-      }
-   }
-   
-   return result;
 }
 
 static GrTextureFormat_t
 fxGlideFormat(GLint mesaFormat)
 {
-   GrTextureFormat_t result;
-   
    if (TDFX_DEBUG & VERBOSE_TEXTURE)
    {
       fprintf(stderr, "fxGlideFormat(mesaFormat=%d)\n", mesaFormat);
    }
-   
+
    switch (mesaFormat)
    {
    case MESA_FORMAT_I8:
-      result = GR_TEXFMT_ALPHA_8;
-      break;
+      return GR_TEXFMT_ALPHA_8;
    case MESA_FORMAT_A8:
-      result = GR_TEXFMT_ALPHA_8;
-      break;
+      return GR_TEXFMT_ALPHA_8;
    case MESA_FORMAT_L8:
-      result = GR_TEXFMT_INTENSITY_8;
-      break;
+      return GR_TEXFMT_INTENSITY_8;
    case MESA_FORMAT_CI8:
-      result = GR_TEXFMT_P_8;
-      break;
+      return GR_TEXFMT_P_8;
    case MESA_FORMAT_AL88:
-      result = GR_TEXFMT_ALPHA_INTENSITY_88;
-      break;
+      return GR_TEXFMT_ALPHA_INTENSITY_88;
    case MESA_FORMAT_RGB565:
-      result = GR_TEXFMT_RGB_565;
-      break;
+      return GR_TEXFMT_RGB_565;
    case MESA_FORMAT_ARGB4444:
-      result = GR_TEXFMT_ARGB_4444;
-      break;
+      return GR_TEXFMT_ARGB_4444;
    case MESA_FORMAT_ARGB1555:
-      result = GR_TEXFMT_ARGB_1555;
-      break;
+      return GR_TEXFMT_ARGB_1555;
    case MESA_FORMAT_ARGB8888:
-      result = GR_TEXFMT_ARGB_8888;
-      break;
+      return GR_TEXFMT_ARGB_8888;
    case MESA_FORMAT_RGB_FXT1:
    case MESA_FORMAT_RGBA_FXT1:
-      result = GR_TEXFMT_ARGB_CMP_FXT1;
-      break;
+      return GR_TEXFMT_ARGB_CMP_FXT1;
    case MESA_FORMAT_RGB_DXT1:
    case MESA_FORMAT_RGBA_DXT1:
-      result = GR_TEXFMT_ARGB_CMP_DXT1;
-      break;
+      return GR_TEXFMT_ARGB_CMP_DXT1;
    case MESA_FORMAT_RGBA_DXT3:
-      result = GR_TEXFMT_ARGB_CMP_DXT3;
-      break;
+      return GR_TEXFMT_ARGB_CMP_DXT3;
    case MESA_FORMAT_RGBA_DXT5:
-      result = GR_TEXFMT_ARGB_CMP_DXT5;
-      break;
+      return GR_TEXFMT_ARGB_CMP_DXT5;
    default:
       fprintf(stderr, "fxGlideFormat: ERROR - Unexpected mesaFormat %d\n", mesaFormat);
       _mesa_problem(NULL, "Unexpected format in fxGlideFormat");
-      result = 0;
-      break;
+      return 0;
    }
-   
-   if (TDFX_DEBUG & VERBOSE_TEXTURE)
-   {
-      fprintf(stderr, "fxGlideFormat returning: 0x%x\n", result);
-   }
-   
-   return result;
 }
 
 static FetchTexelFuncC
@@ -1664,28 +1579,28 @@ void fxDDTexImage2D(GLcontext *ctx, GLenum target, GLint level,
 
    /* Choose the texture format */
    assert(ctx->Driver.ChooseTextureFormat);
-   
+
    if (TDFX_DEBUG & VERBOSE_TEXTURE)
    {
       fprintf(stderr, "fxDDTexImage2D: About to call ChooseTextureFormat...\n");
    }
-   
+
    texImage->TexFormat = (*ctx->Driver.ChooseTextureFormat)(ctx,
                                                             internalFormat, format, type);
 
    if (TDFX_DEBUG & VERBOSE_TEXTURE)
    {
-      fprintf(stderr, "fxDDTexImage2D: ChooseTextureFormat returned: %p\n", (void*)texImage->TexFormat);
+      fprintf(stderr, "fxDDTexImage2D: ChooseTextureFormat returned: %p\n", (void *)texImage->TexFormat);
    }
 
    assert(texImage->TexFormat);
-   
+
    if (TDFX_DEBUG & VERBOSE_TEXTURE)
    {
       fprintf(stderr, "fxDDTexImage2D: TexFormat->MesaFormat=%d, TexelBytes=%d\n",
               texImage->TexFormat->MesaFormat, texImage->TexFormat->TexelBytes);
    }
-   
+
    texelBytes = texImage->TexFormat->TexelBytes;
    /*if (!fxMesa->HaveTexFmt) assert(texelBytes == 1 || texelBytes == 2);*/
 
@@ -1695,7 +1610,7 @@ void fxDDTexImage2D(GLcontext *ctx, GLenum target, GLint level,
    }
 
    mml->glideFormat = fxGlideFormat(texImage->TexFormat->MesaFormat);
-   
+
    if (TDFX_DEBUG & VERBOSE_TEXTURE)
    {
       fprintf(stderr, "fxDDTexImage2D: fxGlideFormat returned: 0x%x\n", mml->glideFormat);
@@ -1737,7 +1652,7 @@ void fxDDTexImage2D(GLcontext *ctx, GLenum target, GLint level,
       if (TDFX_DEBUG & VERBOSE_TEXTURE)
       {
          fprintf(stderr, "fxDDTexImage2D: About to store pixel data\n");
-         fprintf(stderr, "fxDDTexImage2D: StoreImage function pointer: %p\n", (void*)texImage->TexFormat->StoreImage);
+         fprintf(stderr, "fxDDTexImage2D: StoreImage function pointer: %p\n", (void *)texImage->TexFormat->StoreImage);
       }
 
       if (!texImage->TexFormat->StoreImage)
