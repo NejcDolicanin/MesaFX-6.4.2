@@ -519,6 +519,7 @@ struct tfxMesaContext
    GLboolean haveDoubleBuffer;
    GLboolean haveGlobalPaletteTexture;
    GLboolean keepResidentOnInvalidate; /* Keep textures resident on fxTexInvalidate (avoid evict+reupload on param changes) */
+   GLboolean isSinGame; /* Detect Sin.exe to avoid 16-bit texture conversion bug */
    GLint swapInterval;
    GLint maxPendingSwapBuffers;
 

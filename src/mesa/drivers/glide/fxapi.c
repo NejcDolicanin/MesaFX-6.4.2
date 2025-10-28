@@ -471,10 +471,17 @@ fxMesaCreateContext(GLuint win,
    /* Defaults enabled: keep textures resident on invalidate */
    fxMesa->keepResidentOnInvalidate = GL_TRUE;
 
+   /* Nejc Sin - Detect if this is a Sin game to work around 16-bit texture bug */
+   fxMesa->isSinGame = DetectSinGame();
+
    /* Nejc 16bit Textures override from 3dfx tools */
+   /* Skip override for Sin games - they crash with forced 16-bit textures */
    if (fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_TEXTURES") != NULL)
    {
-      fxMesa->HaveTexFmt = GL_FALSE;
+      if (!fxMesa->isSinGame)
+      {
+         fxMesa->HaveTexFmt = GL_FALSE;
+      }
    }
 
    /* Nejc 16bit pixel format override - force at context creation, safety */

@@ -130,4 +130,46 @@ int ReadRefreshFromRegistry(void)
     return 0; /* Not found or invalid */
 }
 
+/* Detects if the current process is a Sin game executable.
+ * Returns 1 if the executable name starts with "sin" (case-insensitive), 0 otherwise.
+ * This is used to work around the 16-bit texture crash bug in Sin games. 
+ * 
+ * Because GL_SHARED_TEXTURE_PALETTE_EXT isnt handled well in Mesa.
+ * Sin:
+- Uses paletted textures (CI8 format)
+- Enables GL_SHARED_TEXTURE_PALETTE_EXT__ (3dfx-specific extension)
+- Uses a single global shared palette__ for ALL textures
+- Calls 'gl3DfxSetPaletteEXT()' once to set the global palette
+- This is a 3dfx optimization for games with many textures using the same palette
+ * */
+int DetectSinGame(void)
+{
+    char exePath[MAX_PATH];
+    char *exeName;
+    
+    if (GetModuleFileName(NULL, exePath, MAX_PATH) == 0)
+        return 0;
+    
+    /* Get just the filename from the full path */
+    exeName = strrchr(exePath, '\\');
+    if (exeName)
+        exeName++; /* Skip the backslash */
+    else
+        exeName = exePath;
+    
+    /* Check if filename starts with "sin" (case-insensitive) */
+    /* This catches sin.exe, sin1600.exe, sinctf.exe, etc. */
+    if (_strnicmp(exeName, "sin", 3) == 0)
+    {
+        /* Make sure it's an .exe file */
+        char *ext = strrchr(exeName, '.');
+        if (ext && _stricmp(ext, ".exe") == 0)
+        {
+            return 1;
+        }
+    }
+    
+    return 0;
+}
+
 #endif

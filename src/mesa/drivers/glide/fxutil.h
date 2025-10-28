@@ -19,6 +19,13 @@ extern "C"
      */
     int ReadRefreshFromRegistry(void);
 
+    /*
+     * Detects if the current process is a Sin game executable.
+     * Returns 1 if the executable name starts with "sin" (case-insensitive), 0 otherwise.
+     * Used to work around the 16-bit texture crash bug in Sin games.
+     */
+    int DetectSinGame(void);
+
 #ifdef __cplusplus
 }
 #endif
