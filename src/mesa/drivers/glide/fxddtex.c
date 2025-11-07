@@ -717,6 +717,20 @@ convertPalette(const fxMesaContext fxMesa, FxU32 data[256], const struct gl_colo
    }
 }
 
+static GLuint fx_crc32_accum(const GLvoid *data, size_t bytes)
+{
+   /* very small inlined CRC (not table-optimized, good enough for 1KB) */
+   const GLubyte *p = (const GLubyte *)data;
+   GLuint crc = 0xFFFFFFFFu;
+   for (size_t i = 0; i < bytes; ++i)
+   {
+      crc ^= p[i];
+      for (int k = 0; k < 8; ++k)
+         crc = (crc >> 1) ^ (0xEDB88320u & (-(GLint)(crc & 1)));
+   }
+   return ~crc;
+}
+
 /* Handling texture upload*/
 void fxDDTexPalette(GLcontext *ctx, struct gl_texture_object *tObj)
 {
@@ -749,10 +763,32 @@ void fxDDTexPalette(GLcontext *ctx, struct gl_texture_object *tObj)
          fprintf(stderr, "fxDDTexPalette(global)\n");
       }
 
+      // Nejc Sin new
+      /* Convert palette to Glide format, but only upload when bytes differ */
       fxMesa->glbPalType = convertPalette(fxMesa, fxMesa->glbPalette.data, &ctx->Texture.Palette);
       fxMesa->new_state |= FX_NEW_TEXTURING;
 
-      grTexDownloadTable(fxMesa->glbPalType, &(fxMesa->glbPalette));
+      /* compute CRC of 256 entries * 4 bytes */
+      static GLuint s_lastGlbPalCRC = 0u;
+      const GLuint curCRC = fx_crc32_accum(fxMesa->glbPalette.data, 256u * 4u);
+
+      if (curCRC != s_lastGlbPalCRC)
+      {
+         grTexDownloadTable(fxMesa->glbPalType, &(fxMesa->glbPalette));
+         s_lastGlbPalCRC = curCRC;
+         if (TDFX_DEBUG & VERBOSE_TEXTURE)
+            fprintf(stderr, "global palette uploaded (crc=%08x)\n", curCRC);
+      }
+      else
+      {
+         if (TDFX_DEBUG & VERBOSE_TEXTURE)
+            fprintf(stderr, "global palette unchanged (crc=%08x) — skipped upload\n", curCRC);
+      }
+      // Nejc SIN old
+      //  fxMesa->glbPalType = convertPalette(fxMesa, fxMesa->glbPalette.data, &ctx->Texture.Palette);
+      //  fxMesa->new_state |= FX_NEW_TEXTURING;
+
+      // grTexDownloadTable(fxMesa->glbPalType, &(fxMesa->glbPalette));
    }
 }
 
@@ -1171,16 +1207,34 @@ fxDDChooseTextureFormat(GLcontext *ctx, GLint internalFormat,
               internalFormat, srcFormat, srcType, (int)allow32bpt);
    }
 
+   /* Nejc SIN: unified 8/16/32-bit + shared palette logic --- */
+   if (srcFormat == GL_COLOR_INDEX)
+   {
+      /* Game is uploading indexed (paletted) texels */
+      if (fxMesa->haveGlobalPaletteTexture)
+      {
+         /* Global/shared palette is active */
+         if (!allow32bpt)
+         {
+            /* 16-bit textures selected in-game -> expand indices once to RGB565 */
+            return &_mesa_texformat_rgb565;
+         }
+         else
+         {
+            /* 32-bit textures selected in-game -> expand indices once to 8888 */
+            return &_mesa_texformat_argb8888;
+         }
+      }
+      else
+      {
+         /* Classic paletted texture path (no global/shared palette) */
+         return &_mesa_texformat_ci8;
+      }
+   }
+
    switch (internalFormat)
    {
    case GL_COMPRESSED_RGB:
-#if FX_TC_NCC
-      /* Nejc Added from mesaFx6.2, check */
-      if (fxMesa->HaveTexus2)
-      {
-         return &_mesa_texformat_argb8888;
-      }
-#endif
       /* intentional fall through */
    case 3:
    case GL_RGB:
@@ -1200,13 +1254,6 @@ fxDDChooseTextureFormat(GLcontext *ctx, GLint internalFormat,
    case GL_RGBA4:
       return &_mesa_texformat_argb4444;
    case GL_COMPRESSED_RGBA:
-#if FX_TC_NCC
-      /* Nejc Added from mesaFx6.2, check */
-      if (fxMesa->HaveTexus2)
-      {
-         return &_mesa_texformat_argb8888;
-      }
-#endif
       /* intentional fall through */
    case 4:
    case GL_RGBA:
@@ -1602,7 +1649,6 @@ void fxDDTexImage2D(GLcontext *ctx, GLenum target, GLint level,
    }
 
    texelBytes = texImage->TexFormat->TexelBytes;
-   /*if (!fxMesa->HaveTexFmt) assert(texelBytes == 1 || texelBytes == 2);*/
 
    if (TDFX_DEBUG & VERBOSE_TEXTURE)
    {
@@ -1711,46 +1757,6 @@ void fxDDTexImage2D(GLcontext *ctx, GLenum target, GLint level,
             fprintf(stderr, "fxDDTexImage2D: StoreImage completed successfully\n");
          }
       }
-
-#if FX_TC_NCC
-      if (fxMesa->HaveTexus2)
-      {
-         GLenum texNCC = 0;
-         GLuint texSize = mml->width * mml->height;
-         if (internalFormat == GL_COMPRESSED_RGB)
-         {
-            texNCC = GR_TEXFMT_YIQ_422;
-         }
-         else if (internalFormat == GL_COMPRESSED_RGBA)
-         {
-            texNCC = GR_TEXFMT_AYIQ_8422;
-            texSize <<= 1;
-         }
-         if (texNCC)
-         {
-            TxMip txMip, pxMip;
-            GLubyte *tempImage = MESA_PBUFFER_ALLOC(texSize);
-            if (!tempImage)
-            {
-               _mesa_error(ctx, GL_OUT_OF_MEMORY, "glTexImage2D");
-               return;
-            }
-            txMip.width = mml->width;
-            txMip.height = mml->height;
-            txMip.depth = 1;
-            txMip.data[0] = texImage->Data;
-            pxMip.data[0] = tempImage;
-            fxMesa->Glide.txMipQuantize(&pxMip, &txMip, texNCC, TX_DITHER_ERR, TX_COMPRESSION_HEURISTIC);
-            if (level == 0)
-            {
-               fxMesa->Glide.txPalToNcc((GuNccTable *)(&(ti->palette)), pxMip.pal);
-            }
-            MESA_PBUFFER_FREE(texImage->Data);
-            texImage->Data = tempImage;
-            mml->glideFormat = texNCC;
-         }
-      }
-#endif
 
       /* GL_SGIS_generate_mipmap */
       if (level == texObj->BaseLevel && texObj->GenerateMipmap)
@@ -1872,13 +1878,56 @@ void fxDDTexSubImage2D(GLcontext *ctx, GLenum target, GLint level,
    else
    {
       /* no rescaling needed */
-      texImage->TexFormat->StoreImage(ctx, 2, texImage->Format,
-                                      texImage->TexFormat, (GLubyte *)texImage->Data,
-                                      xoffset, yoffset, 0, /* dstX/Y/Zoffset */
-                                      dstRowStride,
-                                      0, /* dstImageStride */
-                                      width, height, 1,
-                                      format, type, pixels, packing);
+
+      // NEJC Sin Tighter path for CI8
+      if (format == GL_COLOR_INDEX &&
+          type == GL_UNSIGNED_BYTE &&
+          texImage->TexFormat &&
+          texImage->TexFormat->MesaFormat == MESA_FORMAT_CI8 &&
+          !texImage->IsCompressed)
+      {
+
+         /* ultra-thin path: row-wise memcpy of 8bpp indices */
+         const GLubyte *src = (const GLubyte *)_mesa_image_address(2, packing, pixels,
+                                                                   width, height, format, type, 0, 0, 0);
+         const GLint srcRowStride = _mesa_image_row_stride(packing, width, format, type);
+         GLubyte *dst = ((GLubyte *)texImage->Data) + yoffset * dstRowStride + xoffset; /* 1 byte per texel */
+
+         if (srcRowStride == dstRowStride && xoffset == 0 && width == mml->width)
+         {
+            /* tight memcpy */
+            MEMCPY(dst, src, (size_t)height * (size_t)dstRowStride);
+         }
+         else
+         {
+            /* line-by-line */
+            for (GLint row = 0; row < height; ++row)
+            {
+               MEMCPY(dst, src, width);
+               dst += dstRowStride;
+               src += srcRowStride;
+            }
+         }
+      }
+      else
+      {
+         texImage->TexFormat->StoreImage(ctx, 2, texImage->Format,
+                                         texImage->TexFormat, (GLubyte *)texImage->Data,
+                                         xoffset, yoffset, 0, /* dstX/Y/Zoffset */
+                                         dstRowStride,
+                                         0, /* dstImageStride */
+                                         width, height, 1,
+                                         format, type, pixels, packing);
+      }
+
+      // Nejc SIN previous
+      // texImage->TexFormat->StoreImage(ctx, 2, texImage->Format,
+      //                                 texImage->TexFormat, (GLubyte *)texImage->Data,
+      //                                 xoffset, yoffset, 0, /* dstX/Y/Zoffset */
+      //                                 dstRowStride,
+      //                                 0, /* dstImageStride */
+      //                                 width, height, 1,
+      //                                 format, type, pixels, packing);
    }
 
    /* GL_SGIS_generate_mipmap */

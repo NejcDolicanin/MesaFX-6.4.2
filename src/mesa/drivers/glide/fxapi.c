@@ -466,7 +466,7 @@ fxMesaCreateContext(GLuint win,
    fxMesa->HaveTexUma = voodoo->HaveTexUma && !getenv("MESA_FX_IGNORE_TEXUMA");
    fxMesa->Glide = glbHWConfig.Glide;
    Glide = &fxMesa->Glide;
-   fxMesa->HaveTexus2 = Glide->txImgQuantize && Glide->txMipQuantize && Glide->txPalToNcc && !getenv("MESA_FX_IGNORE_TEXUS2");
+   fxMesa->HaveTexus2 = GL_FALSE; //NEJC OLD, CAN REMOVE Glide->txImgQuantize && Glide->txMipQuantize && Glide->txPalToNcc && !getenv("MESA_FX_IGNORE_TEXUS2");
 
    /* Defaults enabled: keep textures resident on invalidate */
    fxMesa->keepResidentOnInvalidate = GL_TRUE;
@@ -478,10 +478,10 @@ fxMesaCreateContext(GLuint win,
    /* Skip override for Sin games - they crash with forced 16-bit textures */
    if (fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_TEXTURES") != NULL)
    {
-      if (!fxMesa->isSinGame)
-      {
+      //if (!fxMesa->isSinGame)
+      //{
          fxMesa->HaveTexFmt = GL_FALSE;
-      }
+      //}
    }
 
    /* Nejc 16bit pixel format override - force at context creation, safety */
