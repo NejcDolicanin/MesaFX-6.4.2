@@ -1609,11 +1609,13 @@ void fxDDTexImage2D(GLcontext *ctx, GLenum target, GLint level,
                                                                internalFormat);
       dstRowStride = _mesa_compressed_row_stride(internalFormat, mml->width);
       texImage->Data = _mesa_malloc(texImage->CompressedSize);
+      texImage->RowStride = dstRowStride;
    }
    else
    {
       dstRowStride = mml->width * texelBytes;
       texImage->Data = _mesa_malloc(mml->width * mml->height * texelBytes);
+      texImage->RowStride = dstRowStride;
    }
 
    if (!texImage->Data)

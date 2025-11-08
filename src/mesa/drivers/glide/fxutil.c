@@ -137,10 +137,10 @@ int ReadRefreshFromRegistry(void)
  * Because GL_SHARED_TEXTURE_PALETTE_EXT isnt handled well in Mesa.
  * Sin:
 - Uses paletted textures (CI8 format)
-- Enables GL_SHARED_TEXTURE_PALETTE_EXT__ (3dfx-specific extension)
-- Uses a single global shared palette__ for ALL textures
-- Calls 'gl3DfxSetPaletteEXT()' once to set the global palette
-- This is a 3dfx optimization for games with many textures using the same palette
+- Enables GL_SHARED_TEXTURE_PALETTE_EXT
+- Uses a single global shared palette_ for ALL textures
+- combines with 16bit texture formats (like RGB565, ARGB4444)
+The issue is texstore.c, how rgb565 and argb4444 is handled Nejc ToDo
  * */
 int DetectSinGame(void)
 {

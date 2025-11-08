@@ -14,6 +14,17 @@
 #include "state.h"
 #include "texcompress.h"
 
+/* For GL_SGIS_multitexture */
+#ifndef GL_SELECTED_TEXTURE_SGIS
+#define GL_SELECTED_TEXTURE_SGIS 0x835C
+#endif
+#ifndef GL_SELECTED_TEXTURE_COORD_SET_SGIS
+#define GL_SELECTED_TEXTURE_COORD_SET_SGIS 0x835D
+#endif
+#ifndef GL_TEXTURE0_SGIS
+#define GL_TEXTURE0_SGIS 0x835E
+#endif
+
 
 #define FLOAT_TO_BOOLEAN(X)   ( (X) ? GL_TRUE : GL_FALSE )
 
@@ -1056,6 +1067,14 @@ _mesa_GetBooleanv( GLenum pname, GLboolean *params )
       case GL_ACTIVE_TEXTURE_ARB:
          CHECK_EXTENSION_B(ARB_multitexture, pname);
          params[0] = INT_TO_BOOLEAN(GL_TEXTURE0_ARB + ctx->Texture.CurrentUnit);
+         break;
+      case GL_SELECTED_TEXTURE_SGIS:
+         CHECK_EXTENSION_B(SGIS_multitexture, pname);
+         params[0] = INT_TO_BOOLEAN(GL_TEXTURE0_SGIS + ctx->Texture.CurrentUnit);
+         break;
+      case GL_SELECTED_TEXTURE_COORD_SET_SGIS:
+         CHECK_EXTENSION_B(SGIS_multitexture, pname);
+         params[0] = INT_TO_BOOLEAN(GL_TEXTURE0_SGIS + ctx->Array.ActiveTexture);
          break;
       case GL_CLIENT_ACTIVE_TEXTURE_ARB:
          CHECK_EXTENSION_B(ARB_multitexture, pname);
@@ -2905,6 +2924,14 @@ _mesa_GetFloatv( GLenum pname, GLfloat *params )
          CHECK_EXTENSION_F(ARB_multitexture, pname);
          params[0] = (GLfloat)(GL_TEXTURE0_ARB + ctx->Texture.CurrentUnit);
          break;
+      case GL_SELECTED_TEXTURE_SGIS:
+         CHECK_EXTENSION_F(SGIS_multitexture, pname);
+         params[0] = (GLfloat)(GL_TEXTURE0_SGIS + ctx->Texture.CurrentUnit);
+         break;
+      case GL_SELECTED_TEXTURE_COORD_SET_SGIS:
+         CHECK_EXTENSION_F(SGIS_multitexture, pname);
+         params[0] = (GLfloat)(GL_TEXTURE0_SGIS + ctx->Array.ActiveTexture);
+         break;
       case GL_CLIENT_ACTIVE_TEXTURE_ARB:
          CHECK_EXTENSION_F(ARB_multitexture, pname);
          params[0] = (GLfloat)(GL_TEXTURE0_ARB + ctx->Array.ActiveTexture);
@@ -4753,6 +4780,14 @@ _mesa_GetIntegerv( GLenum pname, GLint *params )
          CHECK_EXTENSION_I(ARB_multitexture, pname);
          params[0] = GL_TEXTURE0_ARB + ctx->Texture.CurrentUnit;
          break;
+      case GL_SELECTED_TEXTURE_SGIS:
+         CHECK_EXTENSION_I(SGIS_multitexture, pname);
+         params[0] = GL_TEXTURE0_SGIS + ctx->Texture.CurrentUnit;
+         break;
+      case GL_SELECTED_TEXTURE_COORD_SET_SGIS:
+         CHECK_EXTENSION_I(SGIS_multitexture, pname);
+         params[0] = GL_TEXTURE0_SGIS + ctx->Array.ActiveTexture;
+         break;
       case GL_CLIENT_ACTIVE_TEXTURE_ARB:
          CHECK_EXTENSION_I(ARB_multitexture, pname);
          params[0] = GL_TEXTURE0_ARB + ctx->Array.ActiveTexture;
@@ -5643,4 +5678,3 @@ _mesa_GetDoublev( GLenum pname, GLdouble *params )
    for (i = 0; i < 16 && values[i] != magic; i++)
       params[i] = (GLdouble) values[i];
 }
-

@@ -322,8 +322,10 @@ WINGDIAPI PROC GLAPIENTRY wglGetProcAddress(LPCSTR lpszProc)
 {
     PROC p = (PROC) _glapi_get_proc_address((const char *) lpszProc);
     if (p)
-	return p;
-    
+	{
+		return p;
+	}
+
     SetLastError(0);
     return(NULL);
 }

@@ -478,10 +478,10 @@ fxMesaCreateContext(GLuint win,
    /* Skip override for Sin games - they crash with forced 16-bit textures */
    if (fxGetRegistryOrEnvironmentString("FX_MESA_FORCE_16BPP_TEXTURES") != NULL)
    {
-      //if (!fxMesa->isSinGame)
-      //{
+      if (!fxMesa->isSinGame)
+      {
          fxMesa->HaveTexFmt = GL_FALSE;
-      //}
+      }
    }
 
    /* Nejc 16bit pixel format override - force at context creation, safety */
