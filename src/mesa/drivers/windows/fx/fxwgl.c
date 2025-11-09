@@ -58,6 +58,9 @@ extern "C"
 #include "../../glide/fxdrv.h"
 #include "../../glide/fxutil.h"
 
+/* Nejc Extern from fxwgl.c – used to disable ICD calls during unload */   
+BOOL icdActive = TRUE;
+
 /* SGIS_multitexture compatibility wrappers defined in core (texstate.c) */
 extern void GLAPIENTRY glSelectTextureSGIS(GLenum target);
 extern void GLAPIENTRY glSelectTextureCoordSetSGIS(GLenum target);
@@ -697,10 +700,51 @@ GLAPI PROC GLAPIENTRY
 wglGetProcAddress(LPCSTR lpszProc)
 {
    int i;
+   static int arbChecked = 0;
+   static BOOL haveARBMultitexture = FALSE;
+   //icdActive = TRUE;
+
+   /* Check if ICD is still active (avoid calls during shutdown) */
+   if (!icdActive)
+   {
+      SetLastError(0);
+      return NULL;
+   }
+
+   /* Sanity check for input */
+   if (!lpszProc || !*lpszProc)
+   {
+      SetLastError(ERROR_INVALID_PARAMETER);
+      return NULL;
+   }
+
+   /* Lazy probe once for ARB_multitexture availability */
+   if (!arbChecked)
+   {
+      arbChecked = 1;
+      haveARBMultitexture =
+          (_glapi_get_proc_address("glActiveTextureARB") != NULL) &&
+          (_glapi_get_proc_address("glClientActiveTextureARB") != NULL) &&
+          (_glapi_get_proc_address("glMultiTexCoord2fARB") != NULL);
+   }
 
    /* Handle SGIS multitexture names FIRST to force wrappers to ARB */
    if (lpszProc)
    {
+      /* Prevent returning wrappers if ARB multitexture is not available */
+      if (!haveARBMultitexture)
+      {
+         SetLastError(0);
+         return NULL;
+      }
+
+      /* Prevent returning wrappers if Mesa context was already destroyed */
+      if (!ctx)
+      {
+         SetLastError(0);
+         return NULL;
+      }
+
       /* SelectTexture* aliases */
       if (!strcmp(lpszProc, "glSelectTextureSGIS"))
       {
